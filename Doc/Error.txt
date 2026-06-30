@@ -1,0 +1,204 @@
+LogPluginLLM: >>> LLM REQUEST [WorldGen]
+LogPluginLLM:   Model: (default) | Temp: 0.70 | MaxTokens: 4096 | ForceJSON: true
+LogPluginLLM:   Messages: 2
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏世界观设计师。根据玩家的描述生成初始世界配置。\n\n【重要】输出语言必须与用户输入语言一致（用户用中文，你就用中文；用户用英文，你就用英文）。\n\n【重要】必须在JSON中优先输出ini... (1109 chars)
+    [1] user: Create a Custom style world with the following details: 创建一个清宫剧情的故事 The player's character name is: ... (102 chars)
+LogStreaming: Display: FlushAsyncLoading(369): 1 QueuedPackages, 0 AsyncPackages
+LogLLMRuntime: Sending streaming chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=120.0s, model=doubao-seed-2-0-mini-260428)
+PIE: UWidget::RemoveFromParent()在没有UMG父项的 '/Engine/Transient.UnrealEdEngine_0:BP_PluginGameInstance_C_0.WB_WorldSetup_C_1’ 上被调用（如果其通过TakeWidget()直接添加到本地Slate控件，则其必须被显式移除，而不能通过RemoveFromParent()移除）
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Initial chunk parsed from stream, spawning early: 紫禁城储秀宫偏殿 (1355 chars received so far)
+LogMaterial: Warning: Material /Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial missing usage flag SkeletalMesh! Default Material will be used in game.
+LogMaterial: Warning:      The material will recompile every editor launch until resaved.
+LogSkeletalMesh: Warning: Material with missing usage flag was applied to skeletal mesh /Engine/EngineMeshes/SkeletalCube.SkeletalCube
+LogSkeletalMesh: Warning: Material with missing usage flag was applied to skeletal mesh /Engine/EngineMeshes/SkeletalCube.SkeletalCube
+LogPluginLLM: <<< LLM RESPONSE [WorldGen] - OK (6.56s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (1722 chars):
+{
+    "world_id": "qinggong_dynasty_001",
+    "initial_chunk": {
+        "chunk_id": "chunk_001",
+        "name": "紫禁城储秀宫偏殿",
+        "description": "朱红宫墙环绕的储秀宫偏殿，檐下悬挂着鎏金铜铃，殿内陈设着青花缠枝莲纹瓶与暗花绫缎帘，廊下的青石板路落着点点槐花落蕊，远处隐约传来太监管事的唱喏声。",
+        "type": "Palace Chamber",
+        "tags": ["清宫", "后宫", "储秀宫"],
+        "npcs": [
+            {
+                "name": "苏培盛",
+                "description": "身着灰青色太监服的总管太监，面白无须，神色恭谨",
+                "personality": "圆滑周到，察言观色",
+                "dialogue_style": "轻声细...
+LogTemp: [LLMCache] Added new cache entry. Total entries: 1
+LogTemp: Initial chunk chunk_001 already spawned by stream, updating data only
+LogTemp: World generation complete!
+LogViewport: Display: Viewport MouseLockMode Changed, DoNotLock -> LockOnCapture
+LogViewport: Display: Viewport MouseCaptureMode Changed, NoCapture -> CapturePermanently
+LogTemp: Interacting with NPC: 苏培盛
+LogViewport: Display: Viewport MouseLockMode Changed, LockOnCapture -> DoNotLock
+LogViewport: Display: Viewport MouseCaptureMode Changed, CapturePermanently -> CaptureDuringMouseDown
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=苏培盛]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 3
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 紫禁城储... (230 chars)
+    [2] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=苏培盛] - OK (1.26s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (138 chars):
+{"response_text":"哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。","choices":["有劳苏公公费心了，替奴婢谢过皇后娘娘","公公辛苦了，把荔枝搁在案上便好","不知皇后娘娘还有别的吩咐吗？"]}
+LogTemp: [LLMCache] Added new cache entry. Total entries: 2
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=苏培盛]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 5
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 紫禁城储... (230 chars)
+    [2] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+    [3] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+    [4] user: [CHOICE:1] 有劳苏公公费心了，替奴婢谢过皇后娘娘 (29 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=苏培盛] - OK (1.23s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (141 chars):
+{"response_text":"小主太客气了，这都是奴才分内的事。皇后娘娘还特意叮嘱，让小主好好歇着，别太过劳心。","choices":["替奴婢给皇后娘娘带些点心过去"],"choices":["谢过公公，您先回吧"],"choices":["奴婢这就去给皇后娘娘请安"]}
+LogTemp: [LLMCache] Added new cache entry. Total entries: 3
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Interacting with NPC: 苏培盛
+LogTemp: [Cache] Dialogue cache hit! Replay mode: 0
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=苏培盛]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 3
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 紫禁城储... (230 chars)
+    [2] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=苏培盛] - OK (0.98s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (138 chars):
+{"response_text":"哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。","choices":["烦劳苏公公回皇后，奴才身子已大好","多谢苏公公费心，这荔枝看着甚合心意","不知皇后娘娘还有别的吩咐吗？"]}
+LogTemp: [LLMCache] Updated existing cache entry for hash: 641abfaf
+LogPluginLLM: >>> LLM REQUEST [ChunkGen] [from=chunk_001 exit=exit_east]
+LogPluginLLM:   Model: (default) | Temp: 0.70 | MaxTokens: 2048 | ForceJSON: true
+LogPluginLLM:   Messages: 2
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏世界观设计师。根据上下文生成下一个场景分块。\n\n【重要】输出语言必须与用户输入语言一致。\n\nJSON format:\n{\n    "chunk_id": "chunk_XXX",\n ... (662 chars)
+    [1] user: Generate the next chunk for world '紫禁繁花录' (era: 清雍正三年, theme: 后宫女子的生存与抉择，等级制度下的人性挣扎). Player is exit... (152 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=90.0s, model=doubao-seed-2-0-mini-260428)
+LogTemp: Interacting with NPC: 苏培盛
+LogTemp: [Cache] Dialogue cache hit! Replay mode: 0
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=苏培盛]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 3
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 紫禁城储... (230 chars)
+    [2] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [ChunkGen] [from=chunk_001 exit=exit_east] - OK (4.66s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (879 chars):
+{
+    "chunk_id": "chunk_002",
+    "name": "长春宫侧殿偏廊",
+    "description": "朱红廊柱雕着缠枝莲纹，廊下悬着半旧的明宫灯，灯油结着薄灰。廊壁贴着褪色的宫训图，廊尽头摆着两盆蔫了的金边吊兰，风一吹，廊侧的素纱帘轻轻晃着，能听见内殿隐约传来的针线碰撞声，空气中飘着淡淡的熏香与残茶味。",
+    "type": "后宫偏廊",
+    "tags": ["后宫", "宫闱日常", "等级森严"],
+    "npcs": [
+        {
+            "name": "翠儿",
+            "description": "十五六岁的宫女，梳着双丫髻，鬓边别着一朵新鲜的茉莉，手里攥着半幅未绣完的荷包，指尖沾着丝线的绒头，神色带着几分紧绷的小心。",
+            "personality": "怯懦但热心，怕惹事又忍不住想帮人，对宫中规矩半懂不懂。",
+            "dialogue_style": "细声细气，带着怯意，常左右张望怕被人听见。",
+           ...
+LogTemp: [LLMCache] Updated existing cache entry for hash: 641abfaf
+LogSkeletalMesh: Warning: Material with missing usage flag was applied to skeletal mesh /Engine/EngineMeshes/SkeletalCube.SkeletalCube
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=苏培盛] - OK (1.31s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (138 chars):
+{"response_text":"哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。","choices":["替我谢过皇后娘娘，我这身子大好了","劳烦苏公公跑一趟，这荔枝看着就清甜","不知皇后娘娘还有别的吩咐吗？"]}
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Interacting with NPC: 芳若姑姑
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=芳若姑姑]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 3
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 长春宫侧... (230 chars)
+    [2] assistant: 哈答应，皇后娘娘传您去景仁宫请安，时辰不早了，随我来吧，宫中行走需守规矩，切莫冲撞了贵人的仪仗。 (48 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=芳若姑姑] - OK (1.00s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (137 chars):
+{"response_text":"哈答应，皇后娘娘传您去景仁宫请安，时辰不早了，随我来吧，宫中行走需守规矩，切莫冲撞了贵人的仪仗。","choices":["紧跟芳若姑姑身后同行","向芳若姑姑打听景仁宫的近况","刻意放慢脚步与旁人攀谈","询问此次请安的具体事宜"]}
+LogTemp: [LLMCache] Added new cache entry. Total entries: 4
+LogTemp: Interacting with NPC: 苏培盛
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=苏培盛]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 3
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 长春宫侧... (229 chars)
+    [2] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=苏培盛] - OK (1.23s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (147 chars):
+{"response_text":"哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。","choices":["劳烦苏公公费心，放在外间的小几上便好","替我谢过皇后娘娘，苏公公快些回内务府当差吧","苏公公一路辛苦，不如进屋喝杯茶再走"]}
+LogTemp: [LLMCache] Added new cache entry. Total entries: 5
+LogPluginLLM: >>> LLM REQUEST [ChunkGen] [from=chunk_002 exit=exit_003]
+LogPluginLLM:   Model: (default) | Temp: 0.70 | MaxTokens: 2048 | ForceJSON: true
+LogPluginLLM:   Messages: 2
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏世界观设计师。根据上下文生成下一个场景分块。\n\n【重要】输出语言必须与用户输入语言一致。\n\nJSON format:\n{\n    "chunk_id": "chunk_XXX",\n ... (662 chars)
+    [1] user: Generate the next chunk for world '紫禁繁花录' (era: 清雍正三年, theme: 后宫女子的生存与抉择，等级制度下的人性挣扎). Player is exit... (151 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=90.0s, model=doubao-seed-2-0-mini-260428)
+LogCharacterMovement: BP_PlayerCharacter_C_0 is stuck and failed to move! Velocity: X=438.48 Y=-409.56 Z=0.00 Location: X=-450.00 Y=2000.00 Z=0.00 Normal: X=1.00 Y=0.00 Z=-0.00 PenetrationDepth:34.000 Actor:BP_GamePortal_C_10 Component:PortalMesh BoneName:None (0 other events since notify)
+LogPluginLLM: <<< LLM RESPONSE [ChunkGen] [from=chunk_002 exit=exit_003] - OK (4.17s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (819 chars):
+{
+    "chunk_id": "chunk_003",
+    "name": "翊坤宫偏廊",
+    "description": "青石板路被宫灯映出淡墨色的光影，廊下的朱红漆柱爬着暗绿的霉痕，廊尽头挂着半幅褪色的兰草绣帘，风过时带出内殿隐约的熏香气息。阶边散落着半片被踩碎的宫制银纹瓷碟，想来是方才小宫女失手摔落的。",
+    "type": "后宫偏廊",
+    "tags": ["翊坤宫", "雍正后宫", "宫规森严", "隐秘角落"],
+    "npcs": [
+        {
+            "name": "绘春",
+            "description": "十五六岁的小宫女，鬓边插着半支绒花，手里攥着刚擦完地的旧抹布，指尖因紧张泛白",
+            "personality": "怯懦胆小，谨小慎微，怕被责罚",
+            "dialogue_style": "语速极快，眼神躲闪，刻意放低声音",
+            "faction": "翊坤宫底层宫女",
+            "initia...
+LogTemp: [LLMCache] Added new cache entry. Total entries: 6
+LogSkeletalMesh: Warning: Material with missing usage flag was applied to skeletal mesh /Engine/EngineMeshes/SkeletalCube.SkeletalCube
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 1285.716553
+LogEOSSDK: LogEOS: SDK Config Product Update Request Completed - No Change
+LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 1285.998657, Update Interval: 313.244415
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=苏培盛]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 5
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (302 chars)
+    [1] system: === GAME STATE ===\nWorld: 紫禁繁花录\nEra: 清雍正三年\nStory Theme: 后宫女子的生存与抉择，等级制度下的人性挣扎\nCurrent Location: 翊坤宫偏... (227 chars)
+    [2] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+    [3] assistant: 哈小主吉祥，皇后娘娘遣奴才来问，小主今日的身子可爽利？御膳房刚进了鲜荔枝，奴才特意给小主带来了一碟。 (50 chars)
+    [4] user: [CHOICE:2] 替我谢过皇后娘娘，苏公公快些回内务府当差吧 (32 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=苏培盛] - OK (1.20s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (123 chars):
+{"response_text":"既是小主的吩咐，奴才这就回内务府复命。改日有空，奴才再给小主递些新鲜的玩意儿来讨您的欢心。","choices":["有劳苏公公挂心了，有心了","苏公公费心了，这荔枝看着就新鲜","恭送苏公公，路上小心"]}
+LogTemp: [LLMCache] Added new cache entry. Total entries: 7
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204

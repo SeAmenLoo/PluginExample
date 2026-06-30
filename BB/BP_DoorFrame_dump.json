@@ -1,0 +1,443 @@
+{
+	"blueprintName": "BP_DoorFrame",
+	"blueprintPath": "/Game/LevelPrototyping/Interactable/Door/BP_DoorFrame.BP_DoorFrame",
+	"parentClassPath": "/Script/Engine.Actor",
+	"parentClassName": "Actor",
+	"isActorDerived": true,
+	"totalNodeCount": 26,
+	"unsupportedNodeCount": 12,
+	"components": [
+		{
+			"variableName": "DefaultSceneRoot",
+			"classPath": "/Script/Engine.SceneComponent",
+			"className": "USceneComponent",
+			"attachParentVarName": "",
+			"attachSocketName": "None",
+			"isRoot": true,
+			"children": [
+				"Box"
+			]
+		},
+		{
+			"variableName": "Box",
+			"classPath": "/Script/Engine.BoxComponent",
+			"className": "UBoxComponent",
+			"attachParentVarName": "DefaultSceneRoot",
+			"attachSocketName": "None",
+			"isRoot": false,
+			"children": []
+		}
+	],
+	"defaults": [
+		{
+			"propertyName": "Box",
+			"propertyType": "ObjectProperty",
+			"innerTypeName": "UBoxComponent",
+			"value": "",
+			"category": "默认",
+			"pointerStorageHint": "Hard",
+			"isInstanceEditable": false,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "DefaultSceneRoot",
+			"propertyType": "ObjectProperty",
+			"innerTypeName": "USceneComponent",
+			"value": "",
+			"category": "默认",
+			"pointerStorageHint": "Hard",
+			"isInstanceEditable": false,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Control",
+			"propertyType": "ObjectProperty",
+			"innerTypeName": "UTimelineComponent",
+			"value": "",
+			"category": "BP_DoorFrame",
+			"pointerStorageHint": "Hard",
+			"isInstanceEditable": false,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Size",
+			"propertyType": "StructProperty",
+			"innerTypeName": "",
+			"value": "(X=400.000000,Y=100.000000,Z=400.000000)",
+			"category": "Door",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Frame",
+			"propertyType": "BoolProperty",
+			"innerTypeName": "",
+			"value": "True",
+			"category": "Door Frame",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Frame Scale",
+			"propertyType": "DoubleProperty",
+			"innerTypeName": "",
+			"value": "1.000000",
+			"category": "Door Frame",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door",
+			"propertyType": "ObjectProperty",
+			"innerTypeName": "UStaticMeshComponent",
+			"value": "",
+			"category": "默认",
+			"pointerStorageHint": "Hard",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Closed Position",
+			"propertyType": "StructProperty",
+			"innerTypeName": "",
+			"value": "(X=0.000000,Y=0.000000,Z=0.000000)",
+			"category": "默认",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Detection Adjust",
+			"propertyType": "StructProperty",
+			"innerTypeName": "",
+			"value": "(X=100.000000,Y=400.000000,Z=0.000000)",
+			"category": "Door",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Thickness",
+			"propertyType": "DoubleProperty",
+			"innerTypeName": "",
+			"value": "0.200000",
+			"category": "Door",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Split Door",
+			"propertyType": "BoolProperty",
+			"innerTypeName": "",
+			"value": "False",
+			"category": "Door",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door Frame Overide Material",
+			"propertyType": "ObjectProperty",
+			"innerTypeName": "UMaterialInterface",
+			"value": "",
+			"category": "Door Frame",
+			"pointerStorageHint": "Hard",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Add Door",
+			"propertyType": "BoolProperty",
+			"innerTypeName": "",
+			"value": "True",
+			"category": "Door",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Door2",
+			"propertyType": "ObjectProperty",
+			"innerTypeName": "UStaticMeshComponent",
+			"value": "",
+			"category": "默认",
+			"pointerStorageHint": "Hard",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		},
+		{
+			"propertyName": "Closed Position_0",
+			"propertyType": "StructProperty",
+			"innerTypeName": "",
+			"value": "(X=0.000000,Y=0.000000,Z=0.000000)",
+			"category": "默认",
+			"pointerStorageHint": "None",
+			"isInstanceEditable": true,
+			"isBlueprintVisible": true
+		}
+	],
+	"eventTrees": [
+		{
+			"graphName": "EventGraph",
+			"event":
+			{
+				"kind": "Event",
+				"label": "ReceiveBeginPlay",
+				"next": [
+					{
+						"kind": "Branch",
+						"label": "IsValid",
+						"condition": "IsValid(Door)",
+						"true": [
+							{
+								"kind": "VariableSet",
+								"label": "Closed Position",
+								"valueExpr": "RelativeLocation"
+							},
+							{
+								"kind": "Branch",
+								"label": "IsValid",
+								"condition": "IsValid(Door2)",
+								"true": [
+									{
+										"kind": "VariableSet",
+										"label": "Closed Position_0",
+										"valueExpr": "RelativeLocation"
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"graphName": "EventGraph",
+			"event":
+			{
+				"kind": "Event",
+				"label": "ReceiveActorBeginOverlap",
+				"next": [
+					{
+						"kind": "CallFunction",
+						"label": "Open Door",
+						"function": "Open Door",
+						"targetExpr": "this"
+					}
+				]
+			}
+		},
+		{
+			"graphName": "EventGraph",
+			"event":
+			{
+				"kind": "Event",
+				"label": "ReceiveActorEndOverlap",
+				"next": [
+					{
+						"kind": "Unsupported",
+						"label": "Branch",
+						"unsupported": "Branch condition cannot be resolved: Pure CallFunction argument 'A' cannot be resolved: Pure CallFunction cannot be inlined: CallFunction has out/ref parameters"
+					}
+				]
+			}
+		},
+		{
+			"graphName": "EventGraph",
+			"event":
+			{
+				"kind": "Event",
+				"label": "Open Door",
+				"next": [
+					{
+						"kind": "Unsupported",
+						"label": "K2Node_Timeline",
+						"unsupported": "Node class K2Node_Timeline is not supported by the BlueprintBuster translator"
+					},
+					{
+						"kind": "Unsupported",
+						"label": "K2_SetRelativeLocation",
+						"function": "K2_SetRelativeLocation",
+						"targetClass": "/Script/Engine.SceneComponent",
+						"targetClassName": "SceneComponent",
+						"unsupported": "CallFunction out-parameters are not supported"
+					},
+					{
+						"kind": "Branch",
+						"label": "IsValid",
+						"condition": "IsValid(Door2)",
+						"true": [
+							{
+								"kind": "Unsupported",
+								"label": "K2_SetRelativeLocation",
+								"function": "K2_SetRelativeLocation",
+								"targetClass": "/Script/Engine.SceneComponent",
+								"targetClassName": "SceneComponent",
+								"unsupported": "CallFunction out-parameters are not supported"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"graphName": "EventGraph",
+			"event":
+			{
+				"kind": "Event",
+				"label": "Close Door",
+				"next": [
+					{
+						"kind": "Unsupported",
+						"label": "K2Node_Timeline",
+						"unsupported": "Node class K2Node_Timeline is not supported by the BlueprintBuster translator"
+					},
+					{
+						"kind": "Unsupported",
+						"label": "K2_SetRelativeLocation",
+						"function": "K2_SetRelativeLocation",
+						"targetClass": "/Script/Engine.SceneComponent",
+						"targetClassName": "SceneComponent",
+						"unsupported": "CallFunction out-parameters are not supported"
+					},
+					{
+						"kind": "Branch",
+						"label": "IsValid",
+						"condition": "IsValid(Door2)",
+						"true": [
+							{
+								"kind": "Unsupported",
+								"label": "K2_SetRelativeLocation",
+								"function": "K2_SetRelativeLocation",
+								"targetClass": "/Script/Engine.SceneComponent",
+								"targetClassName": "SceneComponent",
+								"unsupported": "CallFunction out-parameters are not supported"
+							}
+						]
+					}
+				]
+			}
+		}
+	],
+	"customFunctions": [
+		{
+			"functionName": "Set Mesh",
+			"graphName": "Set Mesh",
+			"isPure": false,
+			"isConst": false,
+			"isBlueprintCallable": true,
+			"inputs": [
+				{
+					"name": "NewMesh",
+					"type": "object",
+					"cppClassName": "UStaticMesh",
+					"isArray": false,
+					"isMap": false,
+					"isSet": false,
+					"isReference": false,
+					"isConst": false
+				},
+				{
+					"name": "RelativeTransform",
+					"type": "struct",
+					"cppClassName": "FTransform",
+					"isArray": false,
+					"isMap": false,
+					"isSet": false,
+					"isReference": false,
+					"isConst": true
+				},
+				{
+					"name": "Material",
+					"type": "object",
+					"cppClassName": "UMaterialInterface",
+					"isArray": false,
+					"isMap": false,
+					"isSet": false,
+					"isReference": false,
+					"isConst": false
+				},
+				{
+					"name": "NewMobility",
+					"type": "enum",
+					"cppClassName": "EComponentMobility",
+					"isArray": false,
+					"isMap": false,
+					"isSet": false,
+					"isReference": false,
+					"isConst": false
+				}
+			],
+			"returns": [],
+			"functionRoot":
+			{
+				"kind": "FunctionEntry",
+				"label": "Set Mesh",
+				"next": [
+					{
+						"kind": "Sequence",
+						"label": "Sequence",
+						"next": [
+							{
+								"kind": "Unsupported",
+								"label": "AddComponent",
+								"function": "AddComponent",
+								"targetExpr": "this",
+								"unsupported": "CallFunction argument 'RelativeTransform' cannot be resolved: Output pin node class K2Node_FunctionEntry is not supported for expression lowering",
+								"args": [
+									{
+										"name": "TemplateName",
+										"expr": "FName(TEXT(\"NODE_AddStaticMeshComponent-1\"))"
+									},
+									{
+										"name": "bManualAttachment",
+										"expr": "false"
+									}
+								]
+							},
+							{
+								"kind": "Unsupported",
+								"label": "SetStaticMesh",
+								"function": "SetStaticMesh",
+								"targetClass": "/Script/Engine.StaticMeshComponent",
+								"targetClassName": "StaticMeshComponent",
+								"unsupported": "CallFunction target expression cannot be resolved: Pure CallFunction cannot be inlined: CallFunction is not pure"
+							},
+							{
+								"kind": "Unsupported",
+								"label": "SetMobility",
+								"function": "SetMobility",
+								"targetClass": "/Script/Engine.SceneComponent",
+								"targetClassName": "SceneComponent",
+								"unsupported": "CallFunction target expression cannot be resolved: Pure CallFunction cannot be inlined: CallFunction is not pure"
+							},
+							{
+								"kind": "FunctionEntry",
+								"label": "IsValid",
+								"next": [
+									{
+										"kind": "Unsupported",
+										"label": "Branch",
+										"unsupported": "Branch condition cannot be resolved: Pure CallFunction argument 'Object' cannot be resolved: Output pin node class K2Node_Tunnel is not supported for expression lowering"
+									},
+									{
+										"kind": "Unsupported",
+										"label": "SetMaterial",
+										"function": "SetMaterial",
+										"targetClass": "/Script/Engine.PrimitiveComponent",
+										"targetClassName": "PrimitiveComponent",
+										"unsupported": "CallFunction target expression cannot be resolved: Pure CallFunction cannot be inlined: CallFunction is not pure"
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		}
+	]
+}

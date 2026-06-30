@@ -1,0 +1,44 @@
+# ========================
+# Unreal Engine Standard .gitignore
+# ========================
+
+# Build results
+[Bb]inaries/
+[Dd]erivedDataCache/
+[Ii]ntermediate/
+[Ss]aved/
+
+# IDE
+.idea/
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln
+*.slnx
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.csproj
+Automation_*.sln
+Automation_*.slnx
+*.code-workspace
+
+# TRAE / Agents
+.trae/
+.agents/
+
+# Plugin intermediate (keep Source, Binaries, Resources)
+Plugins/*/Intermediate/
+Plugins/*/Binaries/
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Unreal MCP session
+.unreal_mcp_session.json
+
+# Backup
+Plugins/bak/

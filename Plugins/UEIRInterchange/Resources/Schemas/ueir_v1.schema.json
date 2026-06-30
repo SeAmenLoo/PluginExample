@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ueir://schemas/v1/document.json",
+  "title": "UEIR Document v1 (draft)",
+  "type": "object",
+  "required": ["schemaId", "version", "meta", "items"],
+  "properties": {
+    "schemaId": { "const": "ueir://schemas/v1/document.json" },
+    "version": { "type": "string" },
+    "meta": { "$ref": "#/$defs/meta" },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "required": ["exportedAtUtcIso8601", "engineVersion", "projectName", "pluginName", "pluginVersion"],
+      "properties": {
+        "exportedAtUtcIso8601": { "type": "string" },
+        "engineVersion": { "type": "string" },
+        "projectName": { "type": "string" },
+        "pluginName": { "type": "string" },
+        "pluginVersion": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "itemKind": {
+      "anyOf": [
+        { "type": "string", "enum": ["Asset", "Blueprint", "Class"] },
+        { "type": "integer", "minimum": 0 }
+      ]
+    },
+    "variable": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "container": { "type": "string" },
+        "subTypeObjectPath": { "type": "string" },
+        "bEditable": { "type": "boolean" },
+        "bExposeOnSpawn": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "blueprintSummary": {
+      "type": "object",
+      "properties": {
+        "parentClassPath": { "type": "string" },
+        "variables": { "type": "array", "items": { "$ref": "#/$defs/variable" } },
+        "functionGraphNames": { "type": "array", "items": { "type": "string" } },
+        "functionGraphs": { "type": "array", "items": { "$ref": "#/$defs/functionGraph" } }
+      },
+      "additionalProperties": false
+    },
+    "graphPinType": {
+      "type": "object",
+      "required": ["category", "subCategory", "subCategoryObjectPath", "container", "bIsReference", "bIsConst"],
+      "properties": {
+        "category": { "type": "string" },
+        "subCategory": { "type": "string" },
+        "subCategoryObjectPath": { "type": "string" },
+        "container": { "type": "string" },
+        "bIsReference": { "type": "boolean" },
+        "bIsConst": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "graphPin": {
+      "type": "object",
+      "required": ["name", "direction", "type", "defaultValue", "defaultObjectPath", "defaultText"],
+      "properties": {
+        "name": { "type": "string" },
+        "direction": { "type": "string" },
+        "type": { "$ref": "#/$defs/graphPinType" },
+        "defaultValue": { "type": "string" },
+        "defaultObjectPath": { "type": "string" },
+        "defaultText": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "graphNode": {
+      "type": "object",
+      "required": ["id", "classPath", "posX", "posY", "pins", "callFunctionPath", "variableName"],
+      "properties": {
+        "id": { "type": "string" },
+        "classPath": { "type": "string" },
+        "posX": { "type": "integer" },
+        "posY": { "type": "integer" },
+        "pins": { "type": "array", "items": { "$ref": "#/$defs/graphPin" } },
+        "callFunctionPath": { "type": "string" },
+        "variableName": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "graphPinRef": {
+      "type": "object",
+      "required": ["nodeId", "pinName"],
+      "properties": {
+        "nodeId": { "type": "string" },
+        "pinName": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "graphEdge": {
+      "type": "object",
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "$ref": "#/$defs/graphPinRef" },
+        "to": { "$ref": "#/$defs/graphPinRef" }
+      },
+      "additionalProperties": false
+    },
+    "functionGraph": {
+      "type": "object",
+      "required": ["graphName", "nodes", "edges"],
+      "properties": {
+        "graphName": { "type": "string" },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/graphNode" } },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/graphEdge" } }
+      },
+      "additionalProperties": false
+    },
+    "item": {
+      "type": "object",
+      "required": ["kind", "objectPath", "classPath"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/itemKind" },
+        "objectPath": { "type": "string" },
+        "classPath": { "type": "string" },
+        "blueprint": { "$ref": "#/$defs/blueprintSummary" }
+      },
+      "additionalProperties": false
+    }
+  }
+}
