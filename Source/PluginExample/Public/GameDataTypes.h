@@ -159,3 +159,47 @@ struct FWorldConfig
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FString OriginalPrompt;
 };
+
+/** Dialogue action types that can be triggered by NPC dialogue */
+UENUM(BlueprintType)
+enum class EDialogueActionType : uint8
+{
+    None            UMETA(DisplayName = "None"),
+    EndDialogue     UMETA(DisplayName = "End Dialogue"),
+    UnlockExit      UMETA(DisplayName = "Unlock Exit"),
+    GiveItem        UMETA(DisplayName = "Give Item"),
+    StartQuest      UMETA(DisplayName = "Start Quest"),
+    ChangeNPCFaction UMETA(DisplayName = "Change NPC Faction"),
+    Custom          UMETA(DisplayName = "Custom")
+};
+
+/** Dialogue action triggered during conversation */
+USTRUCT(BlueprintType)
+struct FDialogueAction
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    EDialogueActionType ActionType = EDialogueActionType::None;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString ExitId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString TargetChunkId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString ItemId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString QuestId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString NPCId;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString NewFaction;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString CustomData;
+};

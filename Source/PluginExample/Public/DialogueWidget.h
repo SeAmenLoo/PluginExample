@@ -2,14 +2,17 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UIStylingHelper.h"
 #include "DialogueWidget.generated.h"
 
 class UButton;
 class UTextBlock;
 class UVerticalBox;
 class UScrollBox;
-class UEditableTextBox;
+class UMultiLineEditableTextBox;
 class USizeBox;
+class UImage;
+class UBorder;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChoiceSelected, int32, ChoiceIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMessageSubmitted, const FString&, MessageText);
@@ -81,6 +84,14 @@ public:
     UFUNCTION(BlueprintPure)
     bool HasChoices() const { return CurrentChoices.Num() > 0; }
 
+    /** Whether to always show a leave dialogue option (default: true) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+    bool bAlwaysShowLeaveOption = true;
+
+    /** Text for the leave dialogue option */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+    FText LeaveOptionText = FText::FromString(TEXT("离开"));
+
     /** Clear all dialogue history */
     UFUNCTION(BlueprintCallable)
     void ClearHistory();
@@ -92,6 +103,18 @@ public:
     /** Set typing speed for typewriter effect */
     UFUNCTION(BlueprintCallable)
     void SetTypingSpeed(float Speed) { TypingSpeed = Speed; }
+
+    /** Apply custom styling to the dialogue widget */
+    UFUNCTION(BlueprintCallable)
+    void ApplyCustomStyling(const FUIStyleConfig& InStyleConfig);
+
+    /** Set background texture for the dialogue widget */
+    UFUNCTION(BlueprintCallable)
+    void SetBackgroundTexture(UTexture2D* BackgroundTexture);
+
+    /** Whether to auto-create background and border at runtime if they don't exist in Blueprint (default: true) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Styling")
+    bool bAutoCreateBackground = true;
 
     /** Delegate when player selects a choice */
     UPROPERTY(BlueprintAssignable)
@@ -108,6 +131,8 @@ public:
 protected:
     virtual void NativeConstruct() override;
     virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+    virtual FReply NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+    virtual FReply NativeOnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
     /** Typing animation tick - call this in tick or timer */
     UFUNCTION(BlueprintCallable)
@@ -128,8 +153,22 @@ protected:
 private:
     void StartTypewriterEffect(const FString& FullText);
     void AdvanceToNextMessage();
+    void CreateRuntimeBackground();
+    void FlushPendingNPCMessageToHistory();
 
 public:
+    /** Style configuration for the dialogue widget */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Styling")
+    FUIStyleConfig StyleConfig;
+
+    /** Background image widget (optional - can be added in Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UImage> BackgroundImage;
+
+    /** Main container border (optional - can be added in Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UBorder> MainBorder;
+
     /** NPC name text */
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
     TObjectPtr<UTextBlock> NPCNameText;
@@ -156,7 +195,7 @@ public:
 
     /** Player input text box */
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-    TObjectPtr<UEditableTextBox> InputTextBox;
+    TObjectPtr<UMultiLineEditableTextBox> InputTextBox;
 
     /** Send button */
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
@@ -202,6 +241,16 @@ private:
     UPROPERTY()
     FString CurrentSpeakerName;
 
+    /** Last NPC message kept in DialogueText (not yet in history) */
+    UPROPERTY()
+    bool bHasPendingLastMessage = false;
+
+    UPROPERTY()
+    FString PendingLastSpeakerName;
+
+    UPROPERTY()
+    FString PendingLastMessage;
+
     /** Current choices for the active message */
     UPROPERTY()
     TArray<FString> ActiveChoices;
@@ -220,4 +269,7 @@ private:
 
     static constexpr float ThinkingDotInterval = 0.5f;
     static constexpr int32 ThinkingMaxDots = 3;
+
+    /** Whether we need to scroll to end next frame */
+    bool bNeedScrollToEnd = false;
 };

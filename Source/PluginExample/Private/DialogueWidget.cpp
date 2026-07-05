@@ -1,17 +1,25 @@
 #include "DialogueWidget.h"
+#include "UIStylingHelper.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/ScrollBox.h"
-#include "Components/EditableTextBox.h"
+#include "Components/MultiLineEditableTextBox.h"
 #include "Components/Button.h"
 #include "Components/SizeBox.h"
+#include "Components/Image.h"
+#include "Components/Border.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Blueprint/SlateBlueprintLibrary.h"
 #include "Components/NamedSlot.h"
 #include "Widgets/Input/SButton.h"
+#include "Framework/Application/SlateApplication.h"
 
 void UDialogueWidget::NativeConstruct()
 {
     Super::NativeConstruct();
+    SetIsFocusable(true);
 
     // Bind button events
     if (SendButton)
@@ -29,33 +37,25 @@ void UDialogueWidget::NativeConstruct()
         InputTextBox->OnTextCommitted.AddDynamic(this, &UDialogueWidget::OnInputCommitted);
     }
 
-    // Style NPC name
-    if (NPCNameText)
+    if (HistoryScrollBox)
     {
-        FSlateFontInfo NameFont = NPCNameText->GetFont();
-        NameFont.Size = 24;
-        NPCNameText->SetFont(NameFont);
-        NPCNameText->SetColorAndOpacity(FLinearColor(1.0f, 0.85f, 0.5f, 1.0f));
+        HistoryScrollBox->SetAlwaysShowScrollbar(true);
+        HistoryScrollBox->SetAlwaysShowScrollbarTrack(true);
+        HistoryScrollBox->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+        HistoryScrollBox->SetAnimateWheelScrolling(true);
+        HistoryScrollBox->SetAllowOverscroll(true);
+        HistoryScrollBox->SetWheelScrollMultiplier(1.5f);
+        HistoryScrollBox->SetVisibility(ESlateVisibility::Visible);
     }
 
-    // Style dialogue text
-    if (DialogueText)
+    // Auto-create background if enabled and not set in Blueprint
+    if (bAutoCreateBackground && !MainBorder)
     {
-        FSlateFontInfo DialogueFont = DialogueText->GetFont();
-        DialogueFont.Size = 18;
-        DialogueText->SetFont(DialogueFont);
-        DialogueText->SetColorAndOpacity(FLinearColor(0.95f, 0.95f, 1.0f, 1.0f));
-        DialogueText->SetAutoWrapText(true);
+        CreateRuntimeBackground();
     }
 
-    // Style thinking indicator
-    if (ThinkingText)
-    {
-        FSlateFontInfo ThinkingFont = ThinkingText->GetFont();
-        ThinkingFont.Size = 16;
-        ThinkingText->SetFont(ThinkingFont);
-        ThinkingText->SetColorAndOpacity(FLinearColor(0.5f, 0.7f, 1.0f, 1.0f));
-    }
+    // Apply initial styling using UIStylingHelper
+    ApplyCustomStyling(StyleConfig);
 
     // Hide input initially
     HideInputField();
@@ -85,6 +85,13 @@ void UDialogueWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
             }
             ThinkingText->SetText(FText::FromString(TEXT("思考中") + DotsStr));
         }
+    }
+
+    // Newer history entries are inserted at the top, so keep the latest content in view.
+    if (bNeedScrollToEnd && HistoryScrollBox)
+    {
+        HistoryScrollBox->ScrollToStart();
+        bNeedScrollToEnd = false;
     }
 }
 
@@ -126,13 +133,16 @@ void UDialogueWidget::AddMessageToHistory(const FString& SpeakerName, const FStr
     MessageText->SetAutoWrapText(true);
     MessageEntry->AddChild(MessageText);
 
-    HistoryContainer->AddChild(MessageEntry);
-
-    // Scroll to bottom
-    if (HistoryScrollBox)
+    int32 InsertIndex = 0;
+    if (DialogueText && HistoryContainer->HasChild(DialogueText))
     {
-        HistoryScrollBox->ScrollToEnd();
+        InsertIndex = 1;
     }
+
+    HistoryContainer->InsertChildAt(InsertIndex, MessageEntry);
+
+    // Mark that we need to scroll to the newest entry next frame.
+    bNeedScrollToEnd = true;
 
     OnMessageAdded();
 }
@@ -143,6 +153,26 @@ void UDialogueWidget::ShowNPCResponse(const FString& NPCName, const FString& Res
     ActiveChoices = Choices;
 
     SetNPCName(NPCName);
+
+    // Stop any ongoing typewriter effect and flush the current message to history
+    if (bIsTypewriterActive)
+    {
+        bIsTypewriterActive = false;
+        if (DialogueText)
+        {
+            DialogueText->SetText(FText::FromString(FullTypewriterText));
+        }
+        bHasPendingLastMessage = true;
+        PendingLastSpeakerName = CurrentSpeakerName;
+        PendingLastMessage = FullTypewriterText;
+    }
+
+    // Push previous pending NPC message into history before starting new one
+    if (bHasPendingLastMessage)
+    {
+        AddMessageToHistory(PendingLastSpeakerName, PendingLastMessage, false);
+        bHasPendingLastMessage = false;
+    }
 
     // Clear current dialogue text
     if (DialogueText)
@@ -159,10 +189,10 @@ void UDialogueWidget::ShowNPCResponse(const FString& NPCName, const FString& Res
     // Start typewriter effect
     StartTypewriterEffect(ResponseText);
 
-    // Show choices after typewriter completes (or immediately if no choices)
-    if (Choices.Num() > 0)
+    // Show choices after typewriter completes
+    // Always show choices container if we have choices or always show leave option
+    if (Choices.Num() > 0 || bAlwaysShowLeaveOption)
     {
-        // Store choices for after typewriter
         CurrentChoices = Choices;
     }
 }
@@ -171,11 +201,11 @@ void UDialogueWidget::ShowInputField()
 {
     if (InputContainer)
     {
-        InputContainer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+        InputContainer->SetVisibility(ESlateVisibility::Visible);
     }
     if (InputTextBox)
     {
-        InputTextBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+        InputTextBox->SetVisibility(ESlateVisibility::Visible);
         FSlateApplication::Get().SetKeyboardFocus(InputTextBox->GetCachedWidget());
     }
     bInputVisible = true;
@@ -226,9 +256,12 @@ void UDialogueWidget::UpdateTypewriter(float DeltaTime)
         bIsTypewriterActive = false;
         DialogueText->SetText(FText::FromString(FullTypewriterText));
 
-        AddMessageToHistory(CurrentSpeakerName, FullTypewriterText, false);
+        // Keep the last message in DialogueText, store as pending for next message
+        bHasPendingLastMessage = true;
+        PendingLastSpeakerName = CurrentSpeakerName;
+        PendingLastMessage = FullTypewriterText;
 
-        if (ActiveChoices.Num() > 0)
+        if (ActiveChoices.Num() > 0 || bAlwaysShowLeaveOption)
         {
             ShowChoices(ActiveChoices);
         }
@@ -239,14 +272,35 @@ void UDialogueWidget::UpdateTypewriter(float DeltaTime)
 
 void UDialogueWidget::ShowThinkingIndicator()
 {
+    // Stop any ongoing typewriter effect and flush to history
+    if (bIsTypewriterActive)
+    {
+        bIsTypewriterActive = false;
+        if (DialogueText)
+        {
+            DialogueText->SetText(FText::FromString(FullTypewriterText));
+        }
+        bHasPendingLastMessage = true;
+        PendingLastSpeakerName = CurrentSpeakerName;
+        PendingLastMessage = FullTypewriterText;
+    }
+
+    FlushPendingNPCMessageToHistory();
+
     bThinkingVisible = true;
     ThinkingDotTimer = 0.0f;
     ThinkingDotCount = 0;
 
     if (ThinkingText)
     {
-        ThinkingText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+        ThinkingText->SetVisibility(ESlateVisibility::Visible);
         ThinkingText->SetText(FText::FromString(TEXT("思考中")));
+    }
+
+    // Clear current dialogue text
+    if (DialogueText)
+    {
+        DialogueText->SetText(FText::GetEmpty());
     }
 
     HideInputField();
@@ -277,27 +331,51 @@ void UDialogueWidget::ShowChoices(const TArray<FString>& Choices)
     }
 
     ChoicesBox->ClearChildren();
-    ChoicesContainer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    ChoicesContainer->SetVisibility(ESlateVisibility::Visible);
 
-    for (int32 i = 0; i < Choices.Num(); ++i)
+    ActiveChoices = Choices;
+    CurrentChoices = Choices;
+
+    int32 ChoiceIndex = 0;
+    for (; ChoiceIndex < Choices.Num(); ++ChoiceIndex)
     {
         UButton* ChoiceButton = NewObject<UButton>(ChoicesBox);
         UTextBlock* ChoiceText = NewObject<UTextBlock>(ChoiceButton);
 
-        ChoiceText->SetText(FText::FromString(FString::Printf(TEXT("%d. %s"), i + 1, *Choices[i])));
+        ChoiceText->SetText(FText::FromString(FString::Printf(TEXT("%d. %s"), ChoiceIndex + 1, *Choices[ChoiceIndex])));
         ChoiceText->SetColorAndOpacity(FLinearColor::White);
         ChoiceText->SetAutoWrapText(true);
 
         ChoiceButton->AddChild(ChoiceText);
-
         ChoicesBox->AddChild(ChoiceButton);
 
-        const int32 Index = i;
+        const int32 Index = ChoiceIndex;
         TSharedRef<SWidget> WidgetRef = ChoiceButton->TakeWidget();
         TSharedRef<SButton> SlateButtonRef = StaticCastSharedRef<SButton>(WidgetRef);
         SlateButtonRef->SetOnClicked(FOnClicked::CreateWeakLambda(this, [this, Index]() -> FReply
         {
             SelectChoice(Index);
+            return FReply::Handled();
+        }));
+    }
+
+    if (bAlwaysShowLeaveOption)
+    {
+        UButton* LeaveButton = NewObject<UButton>(ChoicesBox);
+        UTextBlock* LeaveText = NewObject<UTextBlock>(LeaveButton);
+
+        LeaveText->SetText(LeaveOptionText);
+        LeaveText->SetColorAndOpacity(FLinearColor(0.7f, 0.7f, 0.7f, 1.0f));
+        LeaveText->SetAutoWrapText(true);
+
+        LeaveButton->AddChild(LeaveText);
+        ChoicesBox->AddChild(LeaveButton);
+
+        TSharedRef<SWidget> WidgetRef = LeaveButton->TakeWidget();
+        TSharedRef<SButton> SlateButtonRef = StaticCastSharedRef<SButton>(WidgetRef);
+        SlateButtonRef->SetOnClicked(FOnClicked::CreateWeakLambda(this, [this]() -> FReply
+        {
+            CloseDialogue();
             return FReply::Handled();
         }));
     }
@@ -314,8 +392,10 @@ void UDialogueWidget::SelectChoice(int32 ChoiceIndex)
 {
     if (ChoiceIndex >= 0 && ChoiceIndex < CurrentChoices.Num())
     {
-        // Add choice to history
-        FString ChoiceText = FString::Printf(TEXT("[%d] %s"), ChoiceIndex + 1, *CurrentChoices[ChoiceIndex]);
+        // Preserve chronological order in reverse history view:
+        // flush the currently displayed NPC line before inserting the newer player choice.
+        FlushPendingNPCMessageToHistory();
+
         AddMessageToHistory(TEXT("You"), CurrentChoices[ChoiceIndex], true);
 
         // Clear choices
@@ -345,6 +425,10 @@ void UDialogueWidget::SubmitInput()
     FString InputText = InputTextBox->GetText().ToString();
     if (!InputText.IsEmpty())
     {
+        // Preserve chronological order in reverse history view:
+        // flush the currently displayed NPC line before inserting the newer player message.
+        FlushPendingNPCMessageToHistory();
+
         // Add to history
         AddMessageToHistory(TEXT("You"), InputText, true);
 
@@ -399,15 +483,17 @@ void UDialogueWidget::OnContinueClicked()
 {
     if (bIsTypewriterActive)
     {
-        // Skip typewriter - show full text immediately
         bIsTypewriterActive = false;
         if (DialogueText)
         {
             DialogueText->SetText(FText::FromString(FullTypewriterText));
         }
-        AddMessageToHistory(CurrentSpeakerName, FullTypewriterText, false);
 
-        if (ActiveChoices.Num() > 0)
+        bHasPendingLastMessage = true;
+        PendingLastSpeakerName = CurrentSpeakerName;
+        PendingLastMessage = FullTypewriterText;
+
+        if (ActiveChoices.Num() > 0 || bAlwaysShowLeaveOption)
         {
             ShowChoices(ActiveChoices);
         }
@@ -428,10 +514,17 @@ void UDialogueWidget::OnChoiceClicked(int32 Index)
 
 void UDialogueWidget::OnInputCommitted(const FText& Text, ETextCommit::Type CommitMethod)
 {
-    if (CommitMethod == ETextCommit::OnEnter)
+}
+
+FReply UDialogueWidget::NativeOnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+    if (InKeyEvent.GetKey() == EKeys::Enter && InKeyEvent.IsShiftDown())
     {
         SubmitInput();
+        return FReply::Handled();
     }
+
+    return Super::NativeOnPreviewKeyDown(MyGeometry, InKeyEvent);
 }
 
 void UDialogueWidget::AdvanceToNextMessage()
@@ -442,4 +535,123 @@ void UDialogueWidget::AdvanceToNextMessage()
         PendingNPCMessages.RemoveAt(0);
         ShowNPCResponse(Message.Key, Message.Value, TArray<FString>());
     }
+}
+
+void UDialogueWidget::FlushPendingNPCMessageToHistory()
+{
+    if (bHasPendingLastMessage)
+    {
+        AddMessageToHistory(PendingLastSpeakerName, PendingLastMessage, false);
+        bHasPendingLastMessage = false;
+    }
+}
+
+FReply UDialogueWidget::NativeOnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+    return Super::NativeOnKeyDown(MyGeometry, InKeyEvent);
+}
+
+void UDialogueWidget::ApplyCustomStyling(const FUIStyleConfig& InStyleConfig)
+{
+    StyleConfig = InStyleConfig;
+
+    // Style NPC name text
+    if (NPCNameText)
+    {
+        UUIStylingHelper::StyleTextBlock(NPCNameText, StyleConfig, true);
+        FSlateFontInfo NameFont = NPCNameText->GetFont();
+        NameFont.Size = StyleConfig.LargeTitleFontSize;
+        NPCNameText->SetFont(NameFont);
+    }
+
+    // Style dialogue text
+    if (DialogueText)
+    {
+        UUIStylingHelper::StyleTextBlock(DialogueText, StyleConfig, false);
+        FSlateFontInfo DialogueFont = DialogueText->GetFont();
+        DialogueFont.Size = StyleConfig.TitleFontSize;
+        DialogueText->SetFont(DialogueFont);
+    }
+
+    // Style thinking indicator
+    if (ThinkingText)
+    {
+        UUIStylingHelper::StyleTextBlock(ThinkingText, StyleConfig, false);
+        ThinkingText->SetColorAndOpacity(FLinearColor(0.5f, 0.7f, 1.0f, 1.0f));
+    }
+
+    // Style buttons
+    if (SendButton)
+    {
+        UUIStylingHelper::StyleButton(SendButton, StyleConfig, FText::FromString(TEXT("确定")));
+    }
+
+    if (ContinueButton)
+    {
+        UUIStylingHelper::StyleButton(ContinueButton, StyleConfig, FText::FromString(TEXT("继续")));
+    }
+
+    // Adjust history scroll box height
+    if (HistoryScrollBox)
+    {
+        if (USizeBox* SizeBox = Cast<USizeBox>(HistoryScrollBox->GetParent()))
+        {
+            SizeBox->SetMinDesiredHeight(200.0f);
+        }
+    }
+
+    // Apply background styling if MainBorder is available
+    if (MainBorder)
+    {
+        MainBorder->SetBrushColor(StyleConfig.BackgroundColor);
+        MainBorder->SetPadding(FMargin(StyleConfig.Padding.X, StyleConfig.Padding.Y));
+    }
+}
+
+void UDialogueWidget::SetBackgroundTexture(UTexture2D* BackgroundTexture)
+{
+    if (BackgroundImage && BackgroundTexture)
+    {
+        FSlateBrush Brush;
+        Brush.SetResourceObject(BackgroundTexture);
+        Brush.ImageSize = FVector2D(BackgroundTexture->GetSizeX(), BackgroundTexture->GetSizeY());
+        Brush.DrawAs = ESlateBrushDrawType::Image;
+        BackgroundImage->SetBrush(Brush);
+        BackgroundImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
+}
+
+void UDialogueWidget::CreateRuntimeBackground()
+{
+    if (MainBorder)
+    {
+        return;
+    }
+
+    // Create a border as the main background container
+    MainBorder = NewObject<UBorder>(this);
+    MainBorder->Rename(TEXT("MainBorder"));
+    MainBorder->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+
+    // Set initial background color
+    MainBorder->SetBrushColor(StyleConfig.BackgroundColor);
+    MainBorder->SetPadding(FMargin(StyleConfig.Padding.X, StyleConfig.Padding.Y));
+
+    // Create border brush with corner radius
+    FSlateBrush BorderBrush;
+    BorderBrush.DrawAs = ESlateBrushDrawType::RoundedBox;
+    BorderBrush.TintColor = StyleConfig.BorderColor;
+    FVector4 CornerRadii = FVector4(
+        StyleConfig.CornerRadius,
+        StyleConfig.CornerRadius,
+        StyleConfig.CornerRadius,
+        StyleConfig.CornerRadius
+    );
+    BorderBrush.OutlineSettings.CornerRadii = CornerRadii;
+    BorderBrush.OutlineSettings.Width = StyleConfig.BorderThickness;
+    MainBorder->SetBrush(BorderBrush);
+
+    // If we have a root widget, try to wrap content in the border
+    // Note: In UMG, we can't easily reparent widgets at runtime
+    // Instead, we add the border as a background and it sits behind content
 }

@@ -2,12 +2,15 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UIStylingHelper.h"
 #include "WorldSetupWidget.generated.h"
 
 class UButton;
-class UEditableTextBox;
+class UMultiLineEditableTextBox;
 class UComboBoxString;
 class UCheckBox;
+class UBorder;
+class UTextBlock;
 
 UCLASS()
 class PLUGINEXAMPLE_API UWorldSetupWidget : public UUserWidget
@@ -20,9 +23,25 @@ public:
     UPROPERTY(BlueprintAssignable)
     FOnWorldSetupComplete OnWorldSetupComplete;
 
+    /** Apply custom styling to the world setup widget */
+    UFUNCTION(BlueprintCallable)
+    void ApplyCustomStyling(const FUIStyleConfig& InStyleConfig);
+
+    /** Style configuration for the world setup widget */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Styling")
+    FUIStyleConfig StyleConfig;
+
+    /** Background border widget (optional - can be added in Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UBorder> BackgroundBorder;
+
+    /** Title text widget (optional - can be added in Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UTextBlock> TitleText;
+
 protected:
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-    TObjectPtr<UEditableTextBox> WorldPromptTextBox;
+    TObjectPtr<UMultiLineEditableTextBox> WorldPromptTextBox;
 
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
     TObjectPtr<UButton> StartGameButton;
@@ -31,9 +50,10 @@ protected:
     TObjectPtr<UComboBoxString> GameStyleSelector;
 
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-    TObjectPtr<UEditableTextBox> PlayerCharacterNameBox;
+    TObjectPtr<UMultiLineEditableTextBox> PlayerCharacterNameBox;
 
     virtual void NativeConstruct() override;
+    virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
     UFUNCTION()
     void OnStartGameClicked();

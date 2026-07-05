@@ -57,6 +57,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk|Layout")
     float SpawnZOffset = 150.0f;
 
+    /** How far inside the chunk the player should spawn after arriving from a portal */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk|Layout")
+    float PlayerSpawnOffsetFromPortal = 160.0f;
+
     /** Rebuild exit portals based on current chunk data */
     UFUNCTION(BlueprintCallable, Category = "Chunk")
     void RebuildExitPortals();

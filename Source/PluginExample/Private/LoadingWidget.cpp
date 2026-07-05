@@ -1,5 +1,8 @@
 #include "LoadingWidget.h"
+#include "UIStylingHelper.h"
 #include "Components/TextBlock.h"
+#include "Components/Border.h"
+#include "Components/Image.h"
 
 ULoadingWidget::ULoadingWidget(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
@@ -12,25 +15,12 @@ void ULoadingWidget::NativeConstruct()
 {
     Super::NativeConstruct();
 
+    // Apply custom styling
+    ApplyCustomStyling(StyleConfig);
+
     if (LoadingText)
     {
         LoadingText->SetText(FText::FromString(BaseLoadingText));
-        
-        FSlateFontInfo FontInfo = LoadingText->GetFont();
-        FontInfo.Size = 32;
-        LoadingText->SetFont(FontInfo);
-        
-        LoadingText->SetColorAndOpacity(FLinearColor(0.9f, 0.9f, 0.95f, 1.0f));
-        LoadingText->SetAutoWrapText(true);
-    }
-
-    if (DotsText)
-    {
-        FSlateFontInfo FontInfo = DotsText->GetFont();
-        FontInfo.Size = 48;
-        DotsText->SetFont(FontInfo);
-        
-        DotsText->SetColorAndOpacity(FLinearColor(0.3f, 0.7f, 1.0f, 1.0f));
     }
 
     UpdateDotsText();
@@ -70,6 +60,36 @@ void ULoadingWidget::SetAnimatedDots(bool bEnable)
         DotTimer = 0.0f;
     }
     UpdateDotsText();
+}
+
+void ULoadingWidget::ApplyCustomStyling(const FUIStyleConfig& InStyleConfig)
+{
+    StyleConfig = InStyleConfig;
+
+    // Style loading text
+    if (LoadingText)
+    {
+        UUIStylingHelper::StyleTextBlock(LoadingText, StyleConfig, true);
+        FSlateFontInfo FontInfo = LoadingText->GetFont();
+        FontInfo.Size = 32;
+        LoadingText->SetFont(FontInfo);
+    }
+
+    // Style dots text
+    if (DotsText)
+    {
+        FSlateFontInfo FontInfo = DotsText->GetFont();
+        FontInfo.Size = 48;
+        DotsText->SetFont(FontInfo);
+        DotsText->SetColorAndOpacity(FLinearColor(0.3f, 0.7f, 1.0f, 1.0f));
+    }
+
+    // Apply background styling if available
+    if (BackgroundBorder)
+    {
+        BackgroundBorder->SetBrushColor(StyleConfig.BackgroundColor);
+        BackgroundBorder->SetPadding(FMargin(StyleConfig.Padding.X * 2, StyleConfig.Padding.Y * 2));
+    }
 }
 
 void ULoadingWidget::UpdateDotsText()

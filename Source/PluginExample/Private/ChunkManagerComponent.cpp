@@ -10,6 +10,31 @@
 #include "JsonObjectConverter.h"
 #include "LLMRuntime/Public/LLMChatCompletionAsyncAction.h"
 
+namespace
+{
+    float SnapDirectionToCardinal(float Direction)
+    {
+        while (Direction < 0.0f) Direction += 360.0f;
+        while (Direction >= 360.0f) Direction -= 360.0f;
+
+        const float CardinalDirections[4] = { 0.0f, 90.0f, 180.0f, 270.0f };
+        float BestDir = 0.0f;
+        float BestDiff = 360.0f;
+
+        for (float CardDir : CardinalDirections)
+        {
+            float Diff = FMath::Abs(Direction - CardDir);
+            if (Diff > 180.0f) Diff = 360.0f - Diff;
+            if (Diff < BestDiff)
+            {
+                BestDiff = Diff;
+                BestDir = CardDir;
+            }
+        }
+        return BestDir;
+    }
+}
+
 void UChunkManagerComponent::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
@@ -288,7 +313,7 @@ void UChunkManagerComponent::TryParseAndSpawnInitialChunk(const FString& Current
 
                 FExitPoint Exit;
                 Exit.ExitId = ExitObj->GetStringField(TEXT("exit_id"));
-                Exit.ExitDirection = ExitObj->GetNumberField(TEXT("direction"));
+                Exit.ExitDirection = SnapDirectionToCardinal(ExitObj->GetNumberField(TEXT("direction")));
 
                 if (ExitObj->HasField(TEXT("relative_location")))
                 {
@@ -303,10 +328,10 @@ void UChunkManagerComponent::TryParseAndSpawnInitialChunk(const FString& Current
                     }
                 }
 
-                if (ExitObj->HasField(TEXT("target_chunk_id")))
-                {
-                    Exit.TargetChunkId = ExitObj->GetStringField(TEXT("target_chunk_id"));
-                }
+                // Intentionally ignore target_chunk_id from LLM for initial chunk:
+                // these are placeholder IDs (e.g. "chunk_002") that don't correspond
+                // to actual loaded chunks. Exits start undiscovered (empty TargetChunkId)
+                // and get real targets only when unlock_exit triggers chunk generation.
 
                 InitialChunk.ExitPoints.Add(Exit);
             }
@@ -459,7 +484,7 @@ void UChunkManagerComponent::ParseInitialWorldResponse(const FString& JsonRespon
                         const TSharedPtr<FJsonObject>& ExitObj = ExitValue->AsObject();
                         FExitPoint Exit;
                         Exit.ExitId = ExitObj->GetStringField(TEXT("exit_id"));
-                        Exit.ExitDirection = ExitObj->GetNumberField(TEXT("direction"));
+                        Exit.ExitDirection = SnapDirectionToCardinal(ExitObj->GetNumberField(TEXT("direction")));
 
                         if (ExitObj->HasField(TEXT("relative_location")))
                         {
@@ -474,10 +499,10 @@ void UChunkManagerComponent::ParseInitialWorldResponse(const FString& JsonRespon
                             }
                         }
 
-                        if (ExitObj->HasField(TEXT("target_chunk_id")))
-                        {
-                            Exit.TargetChunkId = ExitObj->GetStringField(TEXT("target_chunk_id"));
-                        }
+                        // Intentionally ignore target_chunk_id from LLM for initial chunk:
+                        // these are placeholder IDs (e.g. "chunk_002") that don't correspond
+                        // to actual loaded chunks. Exits start undiscovered (empty TargetChunkId)
+                        // and get real targets only when unlock_exit triggers chunk generation.
 
                         InitialChunk.ExitPoints.Add(Exit);
                     }
@@ -552,7 +577,7 @@ void UChunkManagerComponent::SpawnChunkAndNPCs(const FChunkData& ChunkData, cons
                     NPCFacingYaw = 180.0f;
                 }
 
-                FRotator NPCRotation = FRotator(0, NPCFacingYaw, 0);
+                FRotator NPCRotation = FRotator(0, 0, 0);//FRotator(0, NPCFacingYaw, 0);
 
                 ANPCCharacter* NPC = GetWorld()->SpawnActor<ANPCCharacter>(NPCCharacterClass, NPCLocation, NPCRotation, SpawnParams);
                 if (NPC)
@@ -565,9 +590,6 @@ void UChunkManagerComponent::SpawnChunkAndNPCs(const FChunkData& ChunkData, cons
 
         LoadedChunks.Add(ChunkData.ChunkId, NewChunk);
         CurrentChunk = NewChunk;
-
-        // Update portals in all chunks after new chunk is loaded
-        UpdateAllChunkPortals();
 
         OnChunkLoaded.Broadcast(NewChunk);
     }
@@ -608,7 +630,13 @@ void UChunkManagerComponent::TryTransitionToNextChunk(AGameChunkActor* FromChunk
 
         if (APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0))
         {
-            Player->SetActorLocation(TargetChunk->GetPlayerStartTransform().GetLocation());
+            const FTransform SpawnTransform = TargetChunk->GetPlayerStartTransformFromExit(ExitPoint->ExitDirection);
+            Player->SetActorLocationAndRotation(
+                SpawnTransform.GetLocation(),
+                SpawnTransform.Rotator(),
+                false,
+                nullptr,
+                ETeleportType::TeleportPhysics);
         }
     }
     else
@@ -741,6 +769,19 @@ void UChunkManagerComponent::ParseChunkGenerationResponse(const FString& JsonRes
         NewChunk.ChunkSize = 1000.0f;
         NewChunk.bIsDiscovered = true;
 
+        if (LoadedChunks.Contains(NewChunk.ChunkId))
+        {
+            const FString OriginalChunkId = NewChunk.ChunkId;
+            do
+            {
+                NewChunk.ChunkId = FString::Printf(TEXT("chunk_%d"), ChunkIdCounter++);
+            }
+            while (LoadedChunks.Contains(NewChunk.ChunkId));
+
+            UE_LOG(LogTemp, Warning, TEXT("Generated chunk id %s already exists, remapping exit %s target to unique chunk id %s"),
+                *OriginalChunkId, *ExitId, *NewChunk.ChunkId);
+        }
+
         if (JsonObject->HasField(TEXT("tags")))
         {
             const TArray<TSharedPtr<FJsonValue>>* Tags;
@@ -794,7 +835,7 @@ void UChunkManagerComponent::ParseChunkGenerationResponse(const FString& JsonRes
                     const TSharedPtr<FJsonObject>& ExitObj = ExitValue->AsObject();
                     FExitPoint Exit;
                     Exit.ExitId = ExitObj->GetStringField(TEXT("exit_id"));
-                    Exit.ExitDirection = ExitObj->GetNumberField(TEXT("direction"));
+                    Exit.ExitDirection = SnapDirectionToCardinal(ExitObj->GetNumberField(TEXT("direction")));
 
                     if (ExitObj->HasField(TEXT("relative_location")))
                     {
@@ -829,6 +870,21 @@ void UChunkManagerComponent::ParseChunkGenerationResponse(const FString& JsonRes
             }
         }
 
+        if (!NewChunk.ExitPoints.ContainsByPredicate([EntryDirection](const FExitPoint& Exit)
+        {
+            return FMath::IsNearlyEqual(Exit.ExitDirection, FMath::Fmod(EntryDirection + 180.0f, 360.0f), 1.0f);
+        }))
+        {
+            FExitPoint ReverseExit;
+            const float ReverseDirection = FMath::Fmod(EntryDirection + 180.0f, 360.0f);
+            ReverseExit.ExitId = FString::Printf(TEXT("return_%s"), *FromChunkId);
+            ReverseExit.ExitDirection = ReverseDirection < 0.0f ? ReverseDirection + 360.0f : ReverseDirection;
+            NewChunk.ExitPoints.Add(ReverseExit);
+
+            UE_LOG(LogTemp, Warning, TEXT("Generated chunk %s did not include a reverse exit for source chunk %s; injected fallback return exit at %.0f degrees"),
+                *NewChunk.ChunkId, *FromChunkId, ReverseExit.ExitDirection);
+        }
+
         // Update FromChunk's exit TargetChunkId before spawning new chunk
         if (AGameChunkActor* FromChunk = LoadedChunks.FindRef(FromChunkId))
         {
@@ -842,6 +898,9 @@ void UChunkManagerComponent::ParseChunkGenerationResponse(const FString& JsonRes
         {
             NewChunkActor->SetReverseExitTarget(FromChunkId, EntryDirection);
         }
+
+        // Now create all portals after both forward and reverse exits are set
+        UpdateAllChunkPortals();
     }
 }
 
@@ -884,9 +943,9 @@ void UChunkManagerComponent::StartDialogue(ANPCCharacter* NPC)
 
     CurrentDialogueNPC = NPC;
     CurrentNPCData = NPC->GetNPCData();
-    DialogueMessages.Empty();
     LastNPChoices.Empty();
     bIsWaitingForResponse = false;
+    bPendingInitialChoicesOnlyResponse = false;
 
     // Create dialogue widget
     if (!ActiveDialogueWidget)
@@ -919,16 +978,46 @@ void UChunkManagerComponent::StartDialogue(ANPCCharacter* NPC)
         ActiveDialogueWidget->ClearHistory();
     }
 
-    // Add initial NPC greeting to history
-    if (!CurrentNPCData.InitialDialogue.IsEmpty())
-    {
-        AddDialogueMessage(TEXT("assistant"), CurrentNPCData.InitialDialogue);
-    }
+    // Check if we have prior dialogue history with this NPC
+    FString NPCId = CurrentNPCData.NPCId;
+    bool bHasPriorHistory = NPCDialogueHistoryMap.Contains(NPCId) && NPCDialogueHistoryMap[NPCId].Num() > 0;
 
-    // Show NPC initial dialogue
-    if (ActiveDialogueWidget)
+    if (bHasPriorHistory)
     {
-        ActiveDialogueWidget->ShowNPCResponse(CurrentNPCData.Name, CurrentNPCData.InitialDialogue, TArray<FString>());
+        // Restore prior dialogue history
+        DialogueMessages = NPCDialogueHistoryMap[NPCId];
+
+        // Show thinking indicator while generating a context-aware greeting
+        if (ActiveDialogueWidget)
+        {
+            ActiveDialogueWidget->ShowThinkingIndicator();
+        }
+
+        // Request a new context-aware greeting from LLM
+        SendDialogueRequest(true);
+    }
+    else
+    {
+        // First time talking - use initial dialogue
+        DialogueMessages.Empty();
+
+        // Add initial NPC greeting to history
+        if (!CurrentNPCData.InitialDialogue.IsEmpty())
+        {
+            AddDialogueMessage(TEXT("assistant"), CurrentNPCData.InitialDialogue);
+        }
+
+        // Show NPC initial dialogue
+        if (ActiveDialogueWidget)
+        {
+            ActiveDialogueWidget->ShowNPCResponse(CurrentNPCData.Name, CurrentNPCData.InitialDialogue, TArray<FString>());
+        }
+
+        OnDialogueStarted.Broadcast(NPC, CurrentNPCData.InitialDialogue);
+
+        // Request LLM to generate dialogue choices following the initial greeting
+        bPendingInitialChoicesOnlyResponse = true;
+        SendDialogueRequest(true);
     }
 
     // Disable player input to game
@@ -936,20 +1025,27 @@ void UChunkManagerComponent::StartDialogue(ANPCCharacter* NPC)
     {
         PC->DisableInput(PC);
     }
-
-    OnDialogueStarted.Broadcast(NPC, CurrentNPCData.InitialDialogue);
-
-    // Request next dialogue turn from LLM
-    SendDialogueRequest();
 }
 
 void UChunkManagerComponent::EndDialogue()
 {
+    // Save dialogue history for this NPC before clearing
+    if (CurrentDialogueNPC && DialogueMessages.Num() > 0)
+    {
+        FString NPCId = CurrentNPCData.NPCId;
+        if (!NPCId.IsEmpty())
+        {
+            NPCDialogueHistoryMap.Add(NPCId, DialogueMessages);
+            UE_LOG(LogTemp, Log, TEXT("Saved dialogue history for NPC %s (%d messages)"), *NPCId, DialogueMessages.Num());
+        }
+    }
+
     CurrentDialogueNPC = nullptr;
     CurrentNPCData = FNPCData();
     DialogueMessages.Empty();
     LastNPChoices.Empty();
     bIsWaitingForResponse = false;
+    bPendingInitialChoicesOnlyResponse = false;
 
     if (ActiveDialogueWidget)
     {
@@ -993,12 +1089,108 @@ void UChunkManagerComponent::SubmitPlayerChoice(int32 ChoiceIndex)
 
     if (ChoiceIndex >= 0 && ChoiceIndex < LastNPChoices.Num())
     {
-        // Add choice as user message
         FString ChoiceText = FString::Printf(TEXT("[CHOICE:%d] %s"), ChoiceIndex + 1, *LastNPChoices[ChoiceIndex]);
         AddDialogueMessage(TEXT("user"), ChoiceText);
 
-        // Request LLM response
+        // Check if this choice has an associated action
+        if (FDialogueAction* Action = PendingChoiceActions.Find(ChoiceIndex))
+        {
+            if (Action->ActionType == EDialogueActionType::EndDialogue)
+            {
+                UE_LOG(LogTemp, Log, TEXT("Choice %d has end_dialogue action, closing dialogue"), ChoiceIndex);
+                EndDialogue();
+                return;
+            }
+            else if (Action->ActionType == EDialogueActionType::UnlockExit)
+            {
+                UE_LOG(LogTemp, Log, TEXT("Choice %d has unlock_exit action"), ChoiceIndex);
+                TArray<FDialogueAction> Actions;
+                Actions.Add(*Action);
+                ExecuteDialogueActions(Actions);
+                // Continue dialogue after unlocking (NPC will respond)
+            }
+        }
+
         SendDialogueRequest();
+    }
+}
+
+void UChunkManagerComponent::ExecuteDialogueActions(const TArray<FDialogueAction>& Actions)
+{
+    bool bShouldEndDialogue = false;
+
+    for (const FDialogueAction& Action : Actions)
+    {
+        UE_LOG(LogTemp, Log, TEXT("Executing dialogue action: %d"), (int32)Action.ActionType);
+
+        switch (Action.ActionType)
+        {
+        case EDialogueActionType::EndDialogue:
+            bShouldEndDialogue = true;
+            break;
+
+        case EDialogueActionType::UnlockExit:
+            if (CurrentChunk && !Action.ExitId.IsEmpty())
+            {
+                const FChunkData& ChunkData = CurrentChunk->GetChunkData();
+                const FExitPoint* ExitPoint = ChunkData.ExitPoints.FindByPredicate(
+                    [&Action](const FExitPoint& E) { return E.ExitId == Action.ExitId; });
+
+                if (ExitPoint)
+                {
+                    FString TargetId = !Action.TargetChunkId.IsEmpty()
+                        ? Action.TargetChunkId
+                        : ExitPoint->TargetChunkId;
+
+                    if (!TargetId.IsEmpty() && LoadedChunks.Contains(TargetId))
+                    {
+                        // Target chunk already loaded - this is a return path or already-explored exit.
+                        // Just ensure the portal exists (CreatePortalForExitById guards against duplicates).
+                        // Do NOT generate a new chunk here.
+                        CurrentChunk->UpdateExitTargetChunkId(Action.ExitId, TargetId);
+                        CurrentChunk->CreatePortalForExitById(Action.ExitId);
+                        UE_LOG(LogTemp, Log, TEXT("Unlock exit %s: target %s already loaded (return/visited path), ensuring portal exists (no new chunk generated)"),
+                            *Action.ExitId, *TargetId);
+                    }
+                    else
+                    {
+                        // Target chunk not loaded - generate it
+                        UE_LOG(LogTemp, Log, TEXT("Unlock exit %s: generating new chunk from exit"), *Action.ExitId);
+                        GenerateNextChunk(CurrentChunk->GetChunkId(), Action.ExitId);
+                    }
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Unlock exit failed: exit %s not found in chunk %s"),
+                        *Action.ExitId, *CurrentChunk->GetChunkId());
+                }
+            }
+            break;
+
+        case EDialogueActionType::GiveItem:
+            UE_LOG(LogTemp, Log, TEXT("Give item: %s"), *Action.ItemId);
+            break;
+
+        case EDialogueActionType::StartQuest:
+            UE_LOG(LogTemp, Log, TEXT("Start quest: %s"), *Action.QuestId);
+            break;
+
+        case EDialogueActionType::ChangeNPCFaction:
+            UE_LOG(LogTemp, Log, TEXT("Change NPC %s faction to %s"), *Action.NPCId, *Action.NewFaction);
+            break;
+
+        case EDialogueActionType::Custom:
+            UE_LOG(LogTemp, Log, TEXT("Custom action: %s"), *Action.CustomData);
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    if (bShouldEndDialogue)
+    {
+        EndDialogue();
     }
 }
 
@@ -1037,7 +1229,7 @@ void UChunkManagerComponent::AddDialogueMessage(const FString& Role, const FStri
     }
 }
 
-void UChunkManagerComponent::SendDialogueRequest()
+void UChunkManagerComponent::SendDialogueRequest(bool bGenerateGreeting)
 {
     if (!CurrentDialogueNPC || bIsWaitingForResponse)
     {
@@ -1046,7 +1238,7 @@ void UChunkManagerComponent::SendDialogueRequest()
 
     bIsWaitingForResponse = true;
 
-    if (ActiveDialogueWidget)
+    if (ActiveDialogueWidget && !bPendingInitialChoicesOnlyResponse)
     {
         ActiveDialogueWidget->ShowThinkingIndicator();
     }
@@ -1063,6 +1255,20 @@ void UChunkManagerComponent::SendDialogueRequest()
 
     // Add dialogue history
     Messages.Append(DialogueMessages);
+
+    if (bGenerateGreeting)
+    {
+        if (DialogueMessages.Num() <= 1)
+        {
+            Messages.Add(FLLMChatMessage{TEXT("system"),
+                TEXT("对话刚开始，请接续你刚才的问候，提供3-5个玩家可以选择的对话选项。使用JSON格式回复，response可以简短承接，重点在choices中提供选项。")});
+        }
+        else
+        {
+            Messages.Add(FLLMChatMessage{TEXT("system"),
+                TEXT("玩家再次与你对话，请基于之前的对话历史生成一句新的自然开场白（不要重复之前的问候）。使用JSON格式回复。")});
+        }
+    }
 
     // Check cache first
     FString DialogueCacheContext = FString::Printf(TEXT("npc=%s"), *CurrentNPCData.Name);
@@ -1133,8 +1339,10 @@ void UChunkManagerComponent::SendDialogueRequest()
 void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Response)
 {
     bIsWaitingForResponse = false;
+    const bool bInitialChoicesOnlyResponse = bPendingInitialChoicesOnlyResponse;
+    bPendingInitialChoicesOnlyResponse = false;
 
-    if (ActiveDialogueWidget)
+    if (ActiveDialogueWidget && !bInitialChoicesOnlyResponse)
     {
         ActiveDialogueWidget->HideThinkingIndicator();
     }
@@ -1175,14 +1383,148 @@ void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Resp
                 }
             }
 
+            // Parse dialogue actions
+            TArray<FDialogueAction> Actions;
+            if (JsonObject->HasField(TEXT("actions")))
+            {
+                const TArray<TSharedPtr<FJsonValue>>* ActionArray;
+                if (JsonObject->TryGetArrayField(TEXT("actions"), ActionArray))
+                {
+                    for (const auto& ActionVal : *ActionArray)
+                    {
+                        const TSharedPtr<FJsonObject>& ActionObj = ActionVal->AsObject();
+                        if (!ActionObj.IsValid()) continue;
+
+                        FDialogueAction Action;
+                        FString ActionTypeStr = ActionObj->GetStringField(TEXT("type"));
+
+                        if (ActionTypeStr == TEXT("end_dialogue"))
+                        {
+                            Action.ActionType = EDialogueActionType::EndDialogue;
+                        }
+                        else if (ActionTypeStr == TEXT("unlock_exit"))
+                        {
+                            Action.ActionType = EDialogueActionType::UnlockExit;
+                            if (ActionObj->HasField(TEXT("exit_id")))
+                            {
+                                Action.ExitId = ActionObj->GetStringField(TEXT("exit_id"));
+                            }
+                        }
+                        else if (ActionTypeStr == TEXT("give_item"))
+                        {
+                            Action.ActionType = EDialogueActionType::GiveItem;
+                            if (ActionObj->HasField(TEXT("item_id")))
+                            {
+                                Action.ItemId = ActionObj->GetStringField(TEXT("item_id"));
+                            }
+                        }
+                        else if (ActionTypeStr == TEXT("start_quest"))
+                        {
+                            Action.ActionType = EDialogueActionType::StartQuest;
+                            if (ActionObj->HasField(TEXT("quest_id")))
+                            {
+                                Action.QuestId = ActionObj->GetStringField(TEXT("quest_id"));
+                            }
+                        }
+                        else if (ActionTypeStr == TEXT("change_faction"))
+                        {
+                            Action.ActionType = EDialogueActionType::ChangeNPCFaction;
+                            if (ActionObj->HasField(TEXT("npc_id")))
+                            {
+                                Action.NPCId = ActionObj->GetStringField(TEXT("npc_id"));
+                            }
+                            if (ActionObj->HasField(TEXT("new_faction")))
+                            {
+                                Action.NewFaction = ActionObj->GetStringField(TEXT("new_faction"));
+                            }
+                        }
+                        else
+                        {
+                            Action.ActionType = EDialogueActionType::Custom;
+                            Action.CustomData = ActionTypeStr;
+                        }
+
+                        Actions.Add(Action);
+                    }
+                }
+            }
+
+            // Parse choice actions (which choices trigger end_dialogue)
+            TMap<int32, FDialogueAction> ChoiceActionMap;
+            if (JsonObject->HasField(TEXT("choice_actions")))
+            {
+                const TSharedPtr<FJsonObject>* ChoiceActionsObj;
+                if (JsonObject->TryGetObjectField(TEXT("choice_actions"), ChoiceActionsObj))
+                {
+                    for (auto It = (*ChoiceActionsObj)->Values.CreateIterator(); It; ++It)
+                    {
+                        int32 ChoiceIndex = FCString::Atoi(*It.Key());
+                        const TSharedPtr<FJsonValue>& ActionVal = It.Value();
+                        if (ActionVal->Type == EJson::Object)
+                        {
+                            const TSharedPtr<FJsonObject>& ActionObj = ActionVal->AsObject();
+                            FString ActionTypeStr = ActionObj->GetStringField(TEXT("type"));
+                            FDialogueAction ChoiceAction;
+                            if (ActionTypeStr == TEXT("end_dialogue"))
+                            {
+                                ChoiceAction.ActionType = EDialogueActionType::EndDialogue;
+                            }
+                            else if (ActionTypeStr == TEXT("unlock_exit"))
+                            {
+                                ChoiceAction.ActionType = EDialogueActionType::UnlockExit;
+                                if (ActionObj->HasField(TEXT("exit_id")))
+                                {
+                                    ChoiceAction.ExitId = ActionObj->GetStringField(TEXT("exit_id"));
+                                }
+                            }
+                            ChoiceActionMap.Add(ChoiceIndex, ChoiceAction);
+                        }
+                        else if (ActionVal->Type == EJson::String)
+                        {
+                            FString ActionStr = ActionVal->AsString();
+                            if (ActionStr == TEXT("end_dialogue"))
+                            {
+                                FDialogueAction ChoiceAction;
+                                ChoiceAction.ActionType = EDialogueActionType::EndDialogue;
+                                ChoiceActionMap.Add(ChoiceIndex, ChoiceAction);
+                            }
+                        }
+                    }
+                }
+            }
+
+            LastNPChoices = Choices;
+
+            // Store pending choice actions
+            PendingChoiceActions = ChoiceActionMap;
+
+            if (bInitialChoicesOnlyResponse)
+            {
+                if (ActiveDialogueWidget)
+                {
+                    ActiveDialogueWidget->ShowChoices(Choices);
+                }
+
+                if (Actions.Num() > 0)
+                {
+                    ExecuteDialogueActions(Actions);
+                }
+                return;
+            }
+
             // Add NPC response to history
             AddDialogueMessage(TEXT("assistant"), ResponseText);
-            LastNPChoices = Choices;
 
             // Show response in widget
             if (ActiveDialogueWidget)
             {
                 ActiveDialogueWidget->ShowNPCResponse(CurrentNPCData.Name, ResponseText, Choices);
+            }
+
+            // Execute immediate actions (not choice-dependent)
+            if (Actions.Num() > 0)
+            {
+                ExecuteDialogueActions(Actions);
             }
         }
     }
@@ -1202,6 +1544,33 @@ void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Resp
 
 FString UChunkManagerComponent::BuildDialogueContextInfo() const
 {
+    FString ExitsInfo;
+    if (CurrentChunk)
+    {
+        const FChunkData& ChunkData = CurrentChunk->GetChunkData();
+        if (ChunkData.ExitPoints.Num() > 0)
+        {
+            ExitsInfo += TEXT("\nExits in current chunk:\n");
+            for (const FExitPoint& Exit : ChunkData.ExitPoints)
+            {
+                if (Exit.TargetChunkId.IsEmpty())
+                {
+                    // No target assigned - can be unlocked to generate a new area
+                    ExitsInfo += FString::Printf(TEXT("  - %s (direction: %.0f) - unexplored, can use unlock_exit to generate new area\n"),
+                        *Exit.ExitId, Exit.ExitDirection);
+                }
+                else
+                {
+                    // Target assigned - portal already available, leads to known area
+                    FString TargetName = GetChunkNameById(Exit.TargetChunkId);
+                    ExitsInfo += FString::Printf(TEXT("  - %s (direction: %.0f) - available, leads to: %s (do NOT use unlock_exit on this exit)\n"),
+                        *Exit.ExitId, Exit.ExitDirection,
+                        !TargetName.IsEmpty() ? *TargetName : TEXT("known area"));
+                }
+            }
+        }
+    }
+
     FString ContextInfo = FString::Printf(
         TEXT("=== GAME STATE ===\n")
         TEXT("World: %s\n")
@@ -1212,6 +1581,7 @@ FString UChunkManagerComponent::BuildDialogueContextInfo() const
         TEXT("NPC Personality: %s\n")
         TEXT("NPC Faction: %s\n")
         TEXT("NPC Dialogue Style: %s\n")
+        TEXT("%s")
         TEXT("=== END GAME STATE ==="),
         *WorldConfig.WorldName,
         *WorldConfig.Era,
@@ -1221,7 +1591,8 @@ FString UChunkManagerComponent::BuildDialogueContextInfo() const
         *CurrentNPCData.NPCId,
         *CurrentNPCData.Personality,
         *CurrentNPCData.Faction,
-        *CurrentNPCData.DialogueStyle
+        *CurrentNPCData.DialogueStyle,
+        *ExitsInfo
     );
 
     return ContextInfo;
@@ -1230,7 +1601,7 @@ FString UChunkManagerComponent::BuildDialogueContextInfo() const
 FString UChunkManagerComponent::BuildWorldGenerationSystemPrompt() const
 {
     FString Result = TEXT("你是一个RPG游戏世界观设计师。根据玩家的描述生成初始世界配置。\n\n");
-    Result += TEXT("【重要】输出语言必须与用户输入语言一致（用户用中文，你就用中文；用户用英文，你就用英文）。\n\n");
+    Result += TEXT("【重要】输出语言必须与玩家输入的世界描述语言一致。判断语言时，以 \"details:\" 之后玩家实际填写的内容为准，不要以提示词中的英文格式文本（如 \"Create a...style world\"）为依据。玩家用中文描述，所有名称和对话就用中文；玩家用英文描述，就用英文。\n\n");
     Result += TEXT("【重要】必须在JSON中优先输出initial_chunk，确保流式传输时最早到达。将其放在world_id之后。\n\n");
     Result += TEXT("JSON structure:\n");
     Result += TEXT("{\n");
@@ -1260,7 +1631,7 @@ FString UChunkManagerComponent::BuildWorldGenerationSystemPrompt() const
 FString UChunkManagerComponent::BuildChunkGenerationSystemPrompt() const
 {
     FString Result = TEXT("你是一个RPG游戏世界观设计师。根据上下文生成下一个场景分块。\n\n");
-    Result += TEXT("【重要】输出语言必须与用户输入语言一致。\n\n");
+    Result += TEXT("【重要】输出语言必须与玩家输入的世界描述语言一致，参考游戏状态中的世界名称和NPC名称语言。\n\n");
     Result += TEXT("JSON format:\n");
     Result += TEXT("{\n");
     Result += TEXT("    \"chunk_id\": \"chunk_XXX\",\n");
@@ -1272,6 +1643,8 @@ FString UChunkManagerComponent::BuildChunkGenerationSystemPrompt() const
     Result += TEXT("    \"exit_points\": [{\"exit_id\":\"exit_XXX\",\"direction\":0}]\n");
     Result += TEXT("}\n\n");
     Result += TEXT("Exit directions (degrees): 0=North, 90=East, 180=South, 270=West. Use only these 4 directions. NPC positions and portal positions are auto-placed by the game engine.\n");
+    Result += TEXT("【关键】新生成的chunk必须包含一个“返回来源chunk”的反向出口：如果玩家是从某个方向进入，就必须提供位于相反方向的exit，供系统创建回程传送门。\n");
+    Result += TEXT("【关键】不要省略这个反向出口；它可以有任意合理的exit_id，但direction必须是进入方向的反方向。\n");
     Result += TEXT("1-2 NPCs, 2-4 exits. Consider story progression. Valid JSON only.");
     return Result;
 }
@@ -1281,13 +1654,38 @@ FString UChunkManagerComponent::BuildDialogueSystemPrompt() const
     FString Result = TEXT("你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n");
     Result += TEXT("【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n");
     Result += TEXT("必须使用JSON格式回复，格式如下：\n");
-    Result += TEXT("{\"response_text\":\"角色回复内容，1-3句话，符合角色性格\",\"choices\":[\"选项1\",\"选项2\",\"选项3\"]}\n\n");
+    Result += TEXT("{\n");
+    Result += TEXT("  \"response_text\": \"角色回复内容，1-3句话，符合角色性格\",\n");
+    Result += TEXT("  \"choices\": [\"选项1\", \"选项2\", \"选项3\"],\n");
+    Result += TEXT("  \"actions\": [{\"type\": \"action_type\", ...}],\n");
+    Result += TEXT("  \"choice_actions\": {\"0\": \"end_dialogue\", \"2\": {\"type\": \"unlock_exit\", \"exit_id\": \"exit_north\"}}\n");
+    Result += TEXT("}\n\n");
     Result += TEXT("规则：\n");
     Result += TEXT("- response_text：1-3句沉浸式的角色台词\n");
     Result += TEXT("- choices：2-4个玩家对话选项。如果没有选择项，使用空数组[]\n");
+    Result += TEXT("- actions：（可选）立即执行的动作列表，见下方动作说明\n");
+    Result += TEXT("- choice_actions：（可选）选项对应的动作，键为选项索引（从0开始）\n");
     Result += TEXT("- 始终保持角色身份，不要打破第四面墙\n");
     Result += TEXT("- 匹配NPC的性格、阵营和对话风格\n");
-    Result += TEXT("- 保持对话自然，不要过于冗长");
+    Result += TEXT("- 保持对话自然，不要过于冗长\n\n");
+    Result += TEXT("可用动作类型（actions / choice_actions）：\n");
+    Result += TEXT("1. end_dialogue - 结束对话，关闭对话界面\n");
+    Result += TEXT("   【重要】仅用于玩家明确表示要离开/再见/结束对话的选项，如'再见'、'我走了'、'告辞'等\n");
+    Result += TEXT("   【重要】询问问题、继续对话、获取信息的选项绝对不能标记为 end_dialogue\n");
+    Result += TEXT("   示例：{\"type\": \"end_dialogue\"}\n");
+    Result += TEXT("2. unlock_exit - 解锁一个出口，生成并创建通往新区域的传送门\n");
+    Result += TEXT("   当玩家选择前往某个方向或NPC同意让玩家通过时使用\n");
+    Result += TEXT("   示例：{\"type\": \"unlock_exit\", \"exit_id\": \"exit_north\"}\n");
+    Result += TEXT("   （出口ID从上下文中的当前位置出口列表获取，只传exit_id即可）\n");
+    Result += TEXT("3. give_item - 给予玩家物品\n");
+    Result += TEXT("   示例：{\"type\": \"give_item\", \"item_id\": \"sword_001\"}\n");
+    Result += TEXT("4. start_quest - 开始任务\n");
+    Result += TEXT("   示例：{\"type\": \"start_quest\", \"quest_id\": \"quest_find_cat\"}\n\n");
+    Result += TEXT("使用建议：\n");
+    Result += TEXT("- end_dialogue 只能用于离开/再见类选项，其他选项一律不加\n");
+    Result += TEXT("- 对话界面已有默认的'离开'按钮，通常不需要额外添加离开选项\n");
+    Result += TEXT("- unlock_exit 会触发新区域生成和传送门创建，玩家随后可以进入传送门前往\n");
+    Result += TEXT("- 大多数选项只是继续对话，不需要标记任何动作，留空即可");
     return Result;
 }
 

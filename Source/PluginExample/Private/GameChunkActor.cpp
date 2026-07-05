@@ -94,9 +94,11 @@ FTransform AGameChunkActor::GetPlayerStartTransformFromExit(float EntryExitDirec
 {
     float OppositeDirection = EntryExitDirection + 180.0f;
     FVector EntryLocation = ComputePortalLocation(OppositeDirection);
+    const FVector PortalOutwardDirection = FRotationMatrix(FRotator(0, OppositeDirection, 0)).GetScaledAxis(EAxis::X).GetSafeNormal();
+    const FVector SpawnLocation = GetActorLocation() + EntryLocation - (PortalOutwardDirection * PlayerSpawnOffsetFromPortal);
 
     FTransform StartTransform;
-    StartTransform.SetLocation(GetActorLocation() + EntryLocation);
+    StartTransform.SetLocation(SpawnLocation);
 
     FRotator Rotator = FRotator(0, EntryExitDirection, 0);
     StartTransform.SetRotation(Rotator.Quaternion());
@@ -115,6 +117,8 @@ void AGameChunkActor::RebuildExitPortals()
     }
     ExitPortals.Empty();
 
+    TSet<FString> CreatedTargetChunks;
+
     // Only create portals for exits that have valid TargetChunkId
     for (const FExitPoint& Exit : ChunkData.ExitPoints)
     {
@@ -130,6 +134,14 @@ void AGameChunkActor::RebuildExitPortals()
             UE_LOG(LogTemp, Verbose, TEXT("Skipping portal for exit %s: no target chunk assigned yet"), *Exit.ExitId);
             continue;
         }
+
+        if (CreatedTargetChunks.Contains(Exit.TargetChunkId))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Skipping duplicate portal for exit %s: target %s already has a portal on this chunk"),
+                *Exit.ExitId, *Exit.TargetChunkId);
+            continue;
+        }
+        CreatedTargetChunks.Add(Exit.TargetChunkId);
 
         // Check if the target chunk is actually loaded
         if (UChunkManagerComponent* Manager = UGameplayStatics::GetGameInstance(this)->GetSubsystem<UChunkManagerComponent>())
@@ -196,6 +208,29 @@ void AGameChunkActor::CreatePortalForExit(const FExitPoint& Exit)
 
         ExitPortals.Add(NewPortal);
         UE_LOG(LogTemp, Log, TEXT("Created portal for exit %s -> %s"), *Exit.ExitId, *Exit.TargetChunkId);
+
+        // Push player away if they're too close to the newly spawned portal
+        if (APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0))
+        {
+            FVector PlayerLoc = PlayerPawn->GetActorLocation();
+            float DistToPortal = FVector::Dist(PlayerLoc, PortalLocation);
+            const float SafeDistance = 150.0f;
+
+            if (DistToPortal < SafeDistance)
+            {
+                FVector PushDir = (PlayerLoc - PortalLocation).GetSafeNormal();
+                if (PushDir.IsNearlyZero())
+                {
+                    // Player is exactly at portal center - push towards chunk center
+                    PushDir = (GetActorLocation() - PortalLocation).GetSafeNormal();
+                }
+                FVector NewPlayerLoc = PortalLocation + PushDir * SafeDistance;
+                NewPlayerLoc.Z = PlayerLoc.Z;
+                PlayerPawn->SetActorLocation(NewPlayerLoc, false, nullptr, ETeleportType::TeleportPhysics);
+                UE_LOG(LogTemp, Log, TEXT("Pushed player away from new portal %s (was %.0f units away)"),
+                    *Exit.ExitId, DistToPortal);
+            }
+        }
     }
 }
 

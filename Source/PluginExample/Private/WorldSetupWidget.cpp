@@ -1,11 +1,17 @@
 #include "WorldSetupWidget.h"
+#include "UIStylingHelper.h"
 #include "Components/Button.h"
 #include "Components/ComboBoxString.h"
-#include "Components/EditableTextBox.h"
+#include "Components/MultiLineEditableTextBox.h"
+#include "Components/Border.h"
+#include "Components/TextBlock.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Input/Events.h"
 
 void UWorldSetupWidget::NativeConstruct()
 {
     Super::NativeConstruct();
+    SetIsFocusable(true);
 
     if (StartGameButton)
     {
@@ -21,6 +27,20 @@ void UWorldSetupWidget::NativeConstruct()
         GameStyleSelector->AddOption(TEXT("Custom"));
         GameStyleSelector->SetSelectedOption(TEXT("Medieval Fantasy"));
     }
+
+    // Apply custom styling
+    ApplyCustomStyling(StyleConfig);
+}
+
+FReply UWorldSetupWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+    if (InKeyEvent.GetKey() == EKeys::Enter && InKeyEvent.IsShiftDown())
+    {
+        OnStartGameClicked();
+        return FReply::Handled();
+    }
+
+    return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
 }
 
 void UWorldSetupWidget::OnStartGameClicked()
@@ -58,4 +78,42 @@ void UWorldSetupWidget::OnStartGameClicked()
 
 void UWorldSetupWidget::OnStyleSelected(FString SelectedItem, ESelectInfo::Type SelectionType)
 {
+}
+
+void UWorldSetupWidget::ApplyCustomStyling(const FUIStyleConfig& InStyleConfig)
+{
+    StyleConfig = InStyleConfig;
+
+    // Style title text if available
+    if (TitleText)
+    {
+        UUIStylingHelper::StyleTextBlock(TitleText, StyleConfig, true);
+        FSlateFontInfo TitleFont = TitleText->GetFont();
+        TitleFont.Size = StyleConfig.LargeTitleFontSize;
+        TitleText->SetFont(TitleFont);
+    }
+
+    // Style start button
+    if (StartGameButton)
+    {
+        UUIStylingHelper::StyleButton(StartGameButton, StyleConfig, FText::FromString(TEXT("确定")));
+    }
+
+    // Style editable text boxes
+    if (WorldPromptTextBox)
+    {
+        WorldPromptTextBox->SetForegroundColor(StyleConfig.TextColor);
+    }
+
+    if (PlayerCharacterNameBox)
+    {
+        PlayerCharacterNameBox->SetForegroundColor(StyleConfig.TextColor);
+    }
+
+    // Apply background styling if available
+    if (BackgroundBorder)
+    {
+        BackgroundBorder->SetBrushColor(StyleConfig.BackgroundColor);
+        BackgroundBorder->SetPadding(FMargin(StyleConfig.Padding.X * 1.5f, StyleConfig.Padding.Y * 1.5f));
+    }
 }

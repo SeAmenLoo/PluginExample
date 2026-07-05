@@ -2,9 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UIStylingHelper.h"
 #include "LoadingWidget.generated.h"
 
 class UTextBlock;
+class UBorder;
+class UImage;
 
 UCLASS()
 class PLUGINEXAMPLE_API ULoadingWidget : public UUserWidget
@@ -21,6 +24,22 @@ public:
     /** Set the number of dots to animate (0 to stop) */
     UFUNCTION(BlueprintCallable)
     void SetAnimatedDots(bool bEnable);
+
+    /** Apply custom styling to the loading widget */
+    UFUNCTION(BlueprintCallable)
+    void ApplyCustomStyling(const FUIStyleConfig& InStyleConfig);
+
+    /** Style configuration for the loading widget */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Styling")
+    FUIStyleConfig StyleConfig;
+
+    /** Background border widget (optional - can be added in Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UBorder> BackgroundBorder;
+
+    /** Background image widget (optional - can be added in Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UImage> BackgroundImage;
 
 protected:
     virtual void NativeConstruct() override;

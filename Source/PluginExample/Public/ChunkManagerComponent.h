@@ -55,6 +55,10 @@ public:
     UFUNCTION(BlueprintCallable)
     void UpdateAllChunkPortals();
 
+    /** Execute dialogue actions from NPC response */
+    UFUNCTION(BlueprintCallable)
+    void ExecuteDialogueActions(const TArray<FDialogueAction>& Actions);
+
     /** Start dialogue with NPC */
     UFUNCTION(BlueprintCallable)
     void StartDialogue(ANPCCharacter* NPC);
@@ -183,7 +187,7 @@ private:
     void AddDialogueMessage(const FString& Role, const FString& Content);
 
     /** Send dialogue request to LLM with full history */
-    void SendDialogueRequest();
+    void SendDialogueRequest(bool bGenerateGreeting = false);
 
     UPROPERTY()
     AGameChunkActor* CurrentChunk;
@@ -204,6 +208,9 @@ private:
     UPROPERTY()
     TArray<FLLMChatMessage> DialogueMessages;
 
+    /** Per-NPC dialogue history map, keyed by NPCId (not UPROPERTY - TArray cannot be TMap value) */
+    TMap<FString, TArray<FLLMChatMessage>> NPCDialogueHistoryMap;
+
     /** Current NPC data for context */
     UPROPERTY()
     FNPCData CurrentNPCData;
@@ -220,6 +227,9 @@ private:
     /** Flag to prevent concurrent chunk generation requests */
     bool bIsGeneratingChunk = false;
 
+    /** First-time dialogue requests only need choices for the already displayed initial line. */
+    bool bPendingInitialChoicesOnlyResponse = false;
+
     /** Accumulated content from streaming world generation */
     FString WorldGenStreamContent;
 
@@ -228,6 +238,9 @@ private:
 
     /** Store last NPC choices for selection handling */
     TArray<FString> LastNPChoices;
+
+    /** Actions associated with each choice (by index) */
+    TMap<int32, FDialogueAction> PendingChoiceActions;
 
     /** Temporary storage for chunk generation callback */
     FString PendingFromChunkId;
