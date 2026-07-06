@@ -621,6 +621,76 @@ void UDialogueWidget::SetBackgroundTexture(UTexture2D* BackgroundTexture)
     }
 }
 
+void UDialogueWidget::SetNPCPortrait(UTexture2D* InTexture)
+{
+    CurrentNPCPortrait = InTexture;
+
+    if (!NPCPortraitImage)
+    {
+        return;
+    }
+
+    if (InTexture)
+    {
+        FSlateBrush Brush;
+        Brush.SetResourceObject(InTexture);
+        Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
+        Brush.DrawAs = ESlateBrushDrawType::Image;
+        NPCPortraitImage->SetBrush(Brush);
+        NPCPortraitImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
+    else
+    {
+        NPCPortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+    }
+}
+
+void UDialogueWidget::SetPlayerPortrait(UTexture2D* InTexture)
+{
+    CurrentPlayerPortrait = InTexture;
+
+    if (!PlayerPortraitImage)
+    {
+        return;
+    }
+
+    if (InTexture)
+    {
+        FSlateBrush Brush;
+        Brush.SetResourceObject(InTexture);
+        Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
+        Brush.DrawAs = ESlateBrushDrawType::Image;
+        PlayerPortraitImage->SetBrush(Brush);
+        PlayerPortraitImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
+    else
+    {
+        PlayerPortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+    }
+}
+
+void UDialogueWidget::SetNPCPortraitMaterial(UMaterialInterface* InMaterial)
+{
+    if (!NPCPortraitImage)
+    {
+        return;
+    }
+
+    if (InMaterial)
+    {
+        FSlateBrush Brush;
+        Brush.SetResourceObject(InMaterial);
+        Brush.ImageSize = FVector2D(256.0f, 256.0f);
+        Brush.DrawAs = ESlateBrushDrawType::Image;
+        NPCPortraitImage->SetBrush(Brush);
+        NPCPortraitImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+    }
+    else
+    {
+        NPCPortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+    }
+}
+
 void UDialogueWidget::CreateRuntimeBackground()
 {
     if (MainBorder)

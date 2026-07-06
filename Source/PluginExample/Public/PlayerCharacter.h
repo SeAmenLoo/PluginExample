@@ -9,6 +9,9 @@ class UCameraComponent;
 class USpringArmComponent;
 class ANPCCharacter;
 class UInputAction;
+class UPaperFlipbookComponent;
+class UPaperFlipbook;
+class UTexture2D;
 
 UCLASS()
 class PLUGINEXAMPLE_API APlayerCharacter : public ACharacter
@@ -27,6 +30,22 @@ public:
     /** Check if player can interact with nearby NPC */
     UFUNCTION(BlueprintPure)
     bool CanInteract() const { return NearbyNPC != nullptr; }
+
+    /** Get stable player id used for image generation caching */
+    UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
+    FString GetPlayerImageId() const { return TEXT("Player"); }
+
+    /** Apply generated pixel-art flipbook to player */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetPixelFlipbook(UPaperFlipbook* InFlipbook);
+
+    /** Build runtime single-frame flipbook from a texture (fallback path) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetSpriteFromTexture(UTexture2D* InTexture);
+
+    /** Get current pixel flipbook */
+    UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
+    UPaperFlipbook* GetPixelFlipbook() const { return PixelFlipbook; }
 
 protected:
     virtual void BeginPlay() override;
@@ -80,6 +99,14 @@ public:
     /** Interaction radius */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float InteractionRadius = 200.0f;
+
+    /** Pixel-art flipbook component used for in-world player display */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "RPG|CharacterImage")
+    TObjectPtr<UPaperFlipbookComponent> PixelFlipbookComp;
+
+    /** Cached pixel-art flipbook asset */
+    UPROPERTY(BlueprintReadOnly, Category = "RPG|CharacterImage")
+    TObjectPtr<UPaperFlipbook> PixelFlipbook;
 
 private:
     UPROPERTY()

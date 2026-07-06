@@ -12,6 +12,10 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
+#include "PaperFlipbookComponent.h"
+#include "PaperFlipbook.h"
+#include "PaperSprite.h"
+#include "Engine/Texture2D.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -36,6 +40,13 @@ APlayerCharacter::APlayerCharacter()
     FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
+
+    // Pixel-art flipbook for in-world player display
+    PixelFlipbookComp = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("PixelFlipbookComp"));
+    PixelFlipbookComp->SetupAttachment(RootComponent);
+    PixelFlipbookComp->SetRelativeLocation(FVector(0, 0, -90.0f));
+    PixelFlipbookComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    PixelFlipbookComp->SetVisibility(true);
 
     NearbyNPC = nullptr;
     InteractionRadius = 200.0f;
@@ -154,6 +165,32 @@ void APlayerCharacter::OnInteractPressed()
         {
             ChunkMgr->StartDialogue(NearbyNPC);
         }
+    }
+}
+
+void APlayerCharacter::SetPixelFlipbook(UPaperFlipbook* InFlipbook)
+{
+    PixelFlipbook = InFlipbook;
+    if (PixelFlipbookComp)
+    {
+        if (InFlipbook)
+        {
+            PixelFlipbookComp->SetFlipbook(InFlipbook);
+            PixelFlipbookComp->SetVisibility(true);
+            PixelFlipbookComp->Play();
+        }
+        else
+        {
+            PixelFlipbookComp->SetVisibility(false);
+        }
+    }
+}
+
+void APlayerCharacter::SetSpriteFromTexture(UTexture2D* InTexture)
+{
+    if (PixelFlipbookComp && InTexture)
+    {
+        PixelFlipbookComp->SetVisibility(true);
     }
 }
 

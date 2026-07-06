@@ -3,6 +3,8 @@
 #include "LoadingWidget.h"
 #include "ChunkManagerComponent.h"
 #include "PluginGameInstance.h"
+#include "CharacterImageSubsystem.h"
+#include "PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
 ABasePlayerController::ABasePlayerController()
@@ -92,6 +94,23 @@ void ABasePlayerController::OnWorldGenerationComplete()
     {
         ChunkManager->OnWorldGenerationComplete.RemoveDynamic(this, &ABasePlayerController::OnWorldGenerationComplete);
         ChunkManager->OnWorldGenerationFailed.RemoveDynamic(this, &ABasePlayerController::OnWorldGenerationFailed);
+    }
+
+    // Fire-and-forget player character image generation.
+    // This happens asynchronously after the world is created and must not block game flow.
+    if (UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>())
+    {
+        if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn()))
+        {
+            ImageSubsystem->RequestPlayerCharacterImage(PlayerCharacter);
+        }
+        else if (AActor* PlayerActor = UGameplayStatics::GetPlayerPawn(this, 0))
+        {
+            if (APlayerCharacter* FoundPlayer = Cast<APlayerCharacter>(PlayerActor))
+            {
+                ImageSubsystem->RequestPlayerCharacterImage(FoundPlayer);
+            }
+        }
     }
 
     FInputModeGameOnly InputMode;

@@ -158,6 +158,10 @@ struct FWorldConfig
     /** Raw prompt used to generate this world */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FString OriginalPrompt;
+
+    /** Structured player appearance description for character image generation */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    FString PlayerAppearance;
 };
 
 /** Dialogue action types that can be triggered by NPC dialogue */

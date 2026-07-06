@@ -13,6 +13,8 @@ class UMultiLineEditableTextBox;
 class USizeBox;
 class UImage;
 class UBorder;
+class UMaterialInterface;
+class UTexture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChoiceSelected, int32, ChoiceIndex);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMessageSubmitted, const FString&, MessageText);
@@ -112,6 +114,26 @@ public:
     UFUNCTION(BlueprintCallable)
     void SetBackgroundTexture(UTexture2D* BackgroundTexture);
 
+    /** Set the NPC portrait texture for the dialogue UI (assigned by CharacterImageSubsystem) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetNPCPortrait(UTexture2D* InTexture);
+
+    /** Set the player portrait texture for the dialogue UI (assigned by CharacterImageSubsystem) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetPlayerPortrait(UTexture2D* InTexture);
+
+    /** Set the NPC portrait from a material (e.g. for material-based UI effects) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetNPCPortraitMaterial(UMaterialInterface* InMaterial);
+
+    /** Get the current NPC portrait texture (may be null) */
+    UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
+    UTexture2D* GetNPCPortrait() const { return CurrentNPCPortrait; }
+
+    /** Get the current player portrait texture (may be null) */
+    UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
+    UTexture2D* GetPlayerPortrait() const { return CurrentPlayerPortrait; }
+
     /** Whether to auto-create background and border at runtime if they don't exist in Blueprint (default: true) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Styling")
     bool bAutoCreateBackground = true;
@@ -168,6 +190,14 @@ public:
     /** Main container border (optional - can be added in Blueprint) */
     UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
     TObjectPtr<UBorder> MainBorder;
+
+    /** NPC portrait image displayed in the dialogue UI (optional, bound from Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UImage> NPCPortraitImage;
+
+    /** Player portrait image displayed in the dialogue UI (optional, bound from Blueprint) */
+    UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
+    TObjectPtr<UImage> PlayerPortraitImage;
 
     /** NPC name text */
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
@@ -262,6 +292,14 @@ private:
     /** Is thinking indicator visible */
     UPROPERTY()
     bool bThinkingVisible = false;
+
+    /** Currently displayed NPC portrait (assigned by CharacterImageSubsystem) */
+    UPROPERTY()
+    TObjectPtr<UTexture2D> CurrentNPCPortrait;
+
+    /** Currently displayed player portrait (assigned by CharacterImageSubsystem) */
+    UPROPERTY()
+    TObjectPtr<UTexture2D> CurrentPlayerPortrait;
 
     /** Thinking animation state */
     float ThinkingDotTimer = 0.0f;

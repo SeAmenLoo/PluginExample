@@ -57,6 +57,14 @@
 		{
 			"Name": "LLMRuntime",
 			"Enabled": true
+		},
+		{
+			"Name": "AIImageGenerator",
+			"Enabled": true
+		},
+		{
+			"Name": "Paper2D",
+			"Enabled": true
 		}
 	]
 }

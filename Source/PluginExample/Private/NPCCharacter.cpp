@@ -6,6 +6,10 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "DialogueWidget.h"
+#include "PaperFlipbookComponent.h"
+#include "PaperFlipbook.h"
+#include "PaperSprite.h"
+#include "Engine/Texture2D.h"
 
 ANPCCharacter::ANPCCharacter()
 {
@@ -33,6 +37,13 @@ ANPCCharacter::ANPCCharacter()
     InteractionPromptWidget->SetWidgetSpace(EWidgetSpace::Screen);
     InteractionPromptWidget->SetDrawSize(FVector2D(200.0f, 50.0f));
     InteractionPromptWidget->SetVisibility(false);
+
+    // Pixel-art flipbook (default visible, used for in-world display)
+    PixelFlipbookComp = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("PixelFlipbookComp"));
+    PixelFlipbookComp->SetupAttachment(RootComponent);
+    PixelFlipbookComp->SetRelativeLocation(FVector(0, 0, 0.0f));
+    PixelFlipbookComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    PixelFlipbookComp->SetVisibility(true);
 }
 
 void ANPCCharacter::BeginPlay()
@@ -49,6 +60,32 @@ void ANPCCharacter::SetNPCData(const FNPCData& InData)
 
     NPCNameLabel->SetText(FText::FromString(InData.Name));
     SetActorLabel(InData.Name);
+}
+
+void ANPCCharacter::SetPixelFlipbook(UPaperFlipbook* InFlipbook)
+{
+    PixelFlipbook = InFlipbook;
+    if (PixelFlipbookComp)
+    {
+        if (InFlipbook)
+        {
+            PixelFlipbookComp->SetFlipbook(InFlipbook);
+            PixelFlipbookComp->SetVisibility(true);
+            PixelFlipbookComp->Play();
+        }
+        else
+        {
+            PixelFlipbookComp->SetVisibility(false);
+        }
+    }
+}
+
+void ANPCCharacter::SetSpriteFromTexture(UTexture2D* InTexture, bool bUseAsPixelArt)
+{
+    if (PixelFlipbookComp && InTexture)
+    {
+        PixelFlipbookComp->SetVisibility(true);
+    }
 }
 
 void ANPCCharacter::OnInteractionOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,

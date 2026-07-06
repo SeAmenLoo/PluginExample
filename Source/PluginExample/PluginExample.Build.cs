@@ -10,7 +10,7 @@ public class PluginExample : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HTTP", "Json", "JsonUtilities", "UMG", "Slate", "SlateCore", "EnhancedInput" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "LLMRuntime" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "LLMRuntime", "AIImageGenerator", "Paper2D" });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

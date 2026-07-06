@@ -2,6 +2,7 @@
 #include "GameChunkActor.h"
 #include "NPCCharacter.h"
 #include "DialogueWidget.h"
+#include "CharacterImageSubsystem.h"
 #include "LLMLoggerSubsystem.h"
 #include "LLMRuntime/Public/LLMCacheSubsystem.h"
 #include "Kismet/GameplayStatics.h"
@@ -414,6 +415,11 @@ void UChunkManagerComponent::ParseInitialWorldResponse(const FString& JsonRespon
             WorldConfig.StoryTheme = JsonObject->GetStringField(TEXT("story_theme"));
         }
 
+        if (JsonObject->HasField(TEXT("player_appearance")))
+        {
+            WorldConfig.PlayerAppearance = JsonObject->GetStringField(TEXT("player_appearance"));
+        }
+
         // 2. Then parse initial_chunk and spawn it (skip if already spawned by streaming)
         if (JsonObject->HasField(TEXT("initial_chunk")))
         {
@@ -584,6 +590,14 @@ void UChunkManagerComponent::SpawnChunkAndNPCs(const FChunkData& ChunkData, cons
                 {
                     NPC->SetNPCData(NPCData);
                     NewChunk->SpawnedNPCs.Add(NPC);
+
+                    // Trigger async character image generation for new NPCs.
+                    // The CharacterImageSubsystem handles caching, dedup, and application
+                    // of the generated flipbook/portrait to NPC and any active dialogue widget.
+                    if (UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>())
+                    {
+                        ImageSubsystem->RequestCharacterImageForNPC(NPC, ActiveDialogueWidget);
+                    }
                 }
             }
         }
@@ -976,6 +990,32 @@ void UChunkManagerComponent::StartDialogue(ANPCCharacter* NPC)
     if (ActiveDialogueWidget)
     {
         ActiveDialogueWidget->ClearHistory();
+    }
+
+    // Push cached character image to the dialogue widget for the current NPC.
+    // If image is not yet ready, the subsystem callback (OnCharacterImageReady) will
+    // update the dialogue widget as soon as generation completes.
+    if (UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>())
+    {
+        FString NPCId = NPC->GetNPCId();
+        if (ImageSubsystem->HasCachedImageSet(NPCId))
+        {
+            ImageSubsystem->ApplyCachedImageToDialogue(NPCId, ActiveDialogueWidget);
+        }
+
+        // Also set player portrait if cached
+        if (ActiveDialogueWidget)
+        {
+            UTexture2D* PlayerPortrait = ImageSubsystem->GetExpressionPortrait(TEXT("Player"), TEXT("neutral"));
+            if (!PlayerPortrait)
+            {
+                PlayerPortrait = ImageSubsystem->GetExpressionPortrait(TEXT("Player"), TEXT("happy"));
+            }
+            if (PlayerPortrait)
+            {
+                ActiveDialogueWidget->SetPlayerPortrait(PlayerPortrait);
+            }
+        }
     }
 
     // Check if we have prior dialogue history with this NPC
@@ -1383,6 +1423,50 @@ void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Resp
                 }
             }
 
+            // Parse expression fields and switch dialogue portraits
+            FString NPCExpression = TEXT("neutral");
+            FString PlayerExpression = TEXT("neutral");
+            if (JsonObject->HasField(TEXT("npc_expression")))
+            {
+                NPCExpression = JsonObject->GetStringField(TEXT("npc_expression"));
+            }
+            if (JsonObject->HasField(TEXT("player_expression")))
+            {
+                PlayerExpression = JsonObject->GetStringField(TEXT("player_expression"));
+            }
+
+            if (ActiveDialogueWidget)
+            {
+                if (UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>())
+                {
+                    // Switch NPC portrait by expression
+                    if (!CurrentNPCData.NPCId.IsEmpty())
+                    {
+                        UTexture2D* NPCExprTex = ImageSubsystem->GetExpressionPortrait(CurrentNPCData.NPCId, NPCExpression);
+                        if (!NPCExprTex)
+                        {
+                            // Fallback to default portrait (DetailAnchor) if expression not cached
+                            NPCExprTex = ImageSubsystem->GetExpressionPortrait(CurrentNPCData.NPCId, TEXT("neutral"));
+                        }
+                        if (NPCExprTex)
+                        {
+                            ActiveDialogueWidget->SetNPCPortrait(NPCExprTex);
+                        }
+                    }
+
+                    // Switch player portrait by expression
+                    UTexture2D* PlayerExprTex = ImageSubsystem->GetExpressionPortrait(TEXT("Player"), PlayerExpression);
+                    if (!PlayerExprTex)
+                    {
+                        PlayerExprTex = ImageSubsystem->GetExpressionPortrait(TEXT("Player"), TEXT("neutral"));
+                    }
+                    if (PlayerExprTex)
+                    {
+                        ActiveDialogueWidget->SetPlayerPortrait(PlayerExprTex);
+                    }
+                }
+            }
+
             // Parse dialogue actions
             TArray<FDialogueAction> Actions;
             if (JsonObject->HasField(TEXT("actions")))
@@ -1621,7 +1705,8 @@ FString UChunkManagerComponent::BuildWorldGenerationSystemPrompt() const
     Result += TEXT("    \"geography\": \"Main geography\",\n");
     Result += TEXT("    \"factions\": [\"Faction 1\"],\n");
     Result += TEXT("    \"rules\": [\"Rule 1\"],\n");
-    Result += TEXT("    \"story_theme\": \"Main theme\"\n");
+    Result += TEXT("    \"story_theme\": \"Main theme\",\n");
+    Result += TEXT("    \"player_appearance\": \"主角外貌描述，用于生成角色图。包含性别、年龄、种族、发型、服装、显著特征等\"\n");
     Result += TEXT("}\n\n");
     Result += TEXT("Exit directions (degrees): 0=North, 90=East, 180=South, 270=West. Use only these 4 directions. NPC positions and portal positions are auto-placed by the game engine.\n");
     Result += TEXT("Requirements: 1-2 NPCs and 2-4 exits in initial_chunk. Output valid JSON only.");
@@ -1656,12 +1741,16 @@ FString UChunkManagerComponent::BuildDialogueSystemPrompt() const
     Result += TEXT("必须使用JSON格式回复，格式如下：\n");
     Result += TEXT("{\n");
     Result += TEXT("  \"response_text\": \"角色回复内容，1-3句话，符合角色性格\",\n");
+    Result += TEXT("  \"npc_expression\": \"happy\",\n");
+    Result += TEXT("  \"player_expression\": \"neutral\",\n");
     Result += TEXT("  \"choices\": [\"选项1\", \"选项2\", \"选项3\"],\n");
     Result += TEXT("  \"actions\": [{\"type\": \"action_type\", ...}],\n");
     Result += TEXT("  \"choice_actions\": {\"0\": \"end_dialogue\", \"2\": {\"type\": \"unlock_exit\", \"exit_id\": \"exit_north\"}}\n");
     Result += TEXT("}\n\n");
     Result += TEXT("规则：\n");
     Result += TEXT("- response_text：1-3句沉浸式的角色台词\n");
+    Result += TEXT("- npc_expression：NPC当前表情，可选值: happy（开心）, angry（愤怒）, sad（悲伤）, neutral（平静）。根据台词情绪选择\n");
+    Result += TEXT("- player_expression：玩家角色当前表情，可选值同npc_expression。根据语境推断玩家可能的情绪反应\n");
     Result += TEXT("- choices：2-4个玩家对话选项。如果没有选择项，使用空数组[]\n");
     Result += TEXT("- actions：（可选）立即执行的动作列表，见下方动作说明\n");
     Result += TEXT("- choice_actions：（可选）选项对应的动作，键为选项索引（从0开始）\n");

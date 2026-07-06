@@ -11,6 +11,7 @@ class ANPCCharacter;
 class ULLMChatCompletionAsyncAction;
 class UDialogueWidget;
 class ULLMLoggerSubsystem;
+class UCharacterImageSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChunkLoaded, AGameChunkActor*, Chunk);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueStarted, ANPCCharacter*, NPC, const FString&, InitialText);

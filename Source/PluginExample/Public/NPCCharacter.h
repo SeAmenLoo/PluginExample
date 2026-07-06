@@ -9,6 +9,10 @@
 class USphereComponent;
 class UWidgetComponent;
 class UDialogueWidget;
+class UPaperFlipbookComponent;
+class UPaperFlipbook;
+class UPaperSpriteComponent;
+class UTexture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNPCInteractSignature, ANPCCharacter*, NPC, bool, bIsPlayerInRange);
 
@@ -43,6 +47,18 @@ public:
     UFUNCTION(BlueprintPure)
     bool IsInDialogue() const { return bIsInDialogue; }
 
+    /** Apply the pixel-art flipbook used for in-world NPC display */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetPixelFlipbook(UPaperFlipbook* InFlipbook);
+
+    /** Update NPC visual sprite from a single texture (used for fallback or simple portraits) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetSpriteFromTexture(UTexture2D* InTexture, bool bUseAsPixelArt = true);
+
+    /** Get the current pixel flipbook (may be null) */
+    UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
+    UPaperFlipbook* GetPixelFlipbook() const { return PixelFlipbook; }
+
 protected:
     virtual void BeginPlay() override;
 
@@ -60,6 +76,7 @@ protected:
 
 private:
     void UpdateInteractionPrompt();
+    void RebuildVisualComponent();
 
 public:
     /** Interaction range sphere */
@@ -73,6 +90,14 @@ public:
     /** Interaction prompt widget */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TObjectPtr<UWidgetComponent> InteractionPromptWidget;
+
+    /** Paper flipbook component that renders the pixel-art NPC visual used in-world */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "RPG|CharacterImage")
+    TObjectPtr<UPaperFlipbookComponent> PixelFlipbookComp;
+
+    /** Cached pixel-art flipbook asset (assigned by CharacterImageSubsystem) */
+    UPROPERTY(BlueprintReadOnly, Category = "RPG|CharacterImage")
+    TObjectPtr<UPaperFlipbook> PixelFlipbook;
 
     /** Interaction key to display */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
