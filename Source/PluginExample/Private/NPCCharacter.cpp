@@ -2,14 +2,14 @@
 #include "Components/SphereComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "DialogueWidget.h"
-#include "PaperFlipbookComponent.h"
-#include "PaperFlipbook.h"
-#include "PaperSprite.h"
 #include "Engine/Texture2D.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 ANPCCharacter::ANPCCharacter()
 {
@@ -38,17 +38,30 @@ ANPCCharacter::ANPCCharacter()
     InteractionPromptWidget->SetDrawSize(FVector2D(200.0f, 50.0f));
     InteractionPromptWidget->SetVisibility(false);
 
-    // Pixel-art flipbook (default visible, used for in-world display)
-    PixelFlipbookComp = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("PixelFlipbookComp"));
-    PixelFlipbookComp->SetupAttachment(RootComponent);
-    PixelFlipbookComp->SetRelativeLocation(FVector(0, 0, 0.0f));
-    PixelFlipbookComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    PixelFlipbookComp->SetVisibility(true);
+    CharacterMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CharacterMesh"));
+    CharacterMesh->SetupAttachment(RootComponent);
+    CharacterMesh->SetRelativeLocation(FVector(0, 0, 0.0f));
+    CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    CharacterMesh->SetVisibility(true);
 }
 
 void ANPCCharacter::BeginPlay()
 {
     Super::BeginPlay();
+
+    UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+    if (PlaneMesh)
+    {
+        CharacterMesh->SetStaticMesh(PlaneMesh);
+        CharacterMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+    }
+
+    UMaterial* BaseMaterial = LoadObject<UMaterial>(nullptr, TEXT("/Engine/EngineMaterials/DefaultLitMaterial.DefaultLitMaterial"));
+    if (BaseMaterial)
+    {
+        CharacterMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        CharacterMesh->SetMaterial(0, CharacterMaterial);
+    }
 
     InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ANPCCharacter::OnInteractionOverlap);
     InteractionSphere->OnComponentEndOverlap.AddDynamic(this, &ANPCCharacter::OnInteractionEndOverlap);
@@ -62,29 +75,20 @@ void ANPCCharacter::SetNPCData(const FNPCData& InData)
     SetActorLabel(InData.Name);
 }
 
-void ANPCCharacter::SetPixelFlipbook(UPaperFlipbook* InFlipbook)
+void ANPCCharacter::SetSpriteFromTexture(UTexture2D* InTexture, bool bUseAsPixelArt)
 {
-    PixelFlipbook = InFlipbook;
-    if (PixelFlipbookComp)
+    CurrentPixelTexture = InTexture;
+    if (CharacterMaterial)
     {
-        if (InFlipbook)
+        CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), InTexture);
+        if (InTexture)
         {
-            PixelFlipbookComp->SetFlipbook(InFlipbook);
-            PixelFlipbookComp->SetVisibility(true);
-            PixelFlipbookComp->Play();
+            CharacterMesh->SetVisibility(true);
         }
         else
         {
-            PixelFlipbookComp->SetVisibility(false);
+            CharacterMesh->SetVisibility(false);
         }
-    }
-}
-
-void ANPCCharacter::SetSpriteFromTexture(UTexture2D* InTexture, bool bUseAsPixelArt)
-{
-    if (PixelFlipbookComp && InTexture)
-    {
-        PixelFlipbookComp->SetVisibility(true);
     }
 }
 

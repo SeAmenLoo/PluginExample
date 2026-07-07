@@ -8,7 +8,6 @@
 class ANPCCharacter;
 class APlayerCharacter;
 class UDialogueWidget;
-class UPaperFlipbook;
 class UTexture2D;
 class UAICharacterImageSetAsyncAction;
 
@@ -20,7 +19,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCharacterImageFailed, const FStr
  * 负责协调 LLM 生成的 NPC 配置和 AIImageGenerator 之间的交叉操作：
  * - 在检测到新 NPC 时自动请求角色图集
  * - 缓存已生成的图集，避免重复请求
- * - 将图集应用到场景中 NPC 的 PaperFlipbook 组件和 DialogueWidget 的 Image 组件
+ * - 将图集应用到场景中 NPC 的 Billboard 组件和 DialogueWidget 的 Image 组件
  */
 UCLASS()
 class PLUGINEXAMPLE_API UCharacterImageSubsystem : public UGameInstanceSubsystem
@@ -50,6 +49,9 @@ public:
     /** 获取指定角色和表情的缓存肖像图（表情如 happy/angry/sad，不区分大小写） */
     UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
     UTexture2D* GetExpressionPortrait(const FString& CharacterId, const FString& Expression) const;
+
+    /** 获取缓存肖像图（key = CharacterId|pixel 或 CharacterId|expression） */
+    UTexture2D* GetCachedPortrait(const FString& Key) const;
 
     /** 取消指定角色 ID 的所有进行中请求 */
     UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
@@ -87,10 +89,10 @@ private:
     /** Apply image set to NPC and dialogue widget (Flipbook + UI Image) */
     void ApplyImageSetToActors(const FString& CharacterId, const FAICharacterImageSet& ImageSet);
 
-    /** Apply generated textures to NPC's PaperFlipbook components */
+    /** Apply generated textures to NPC's Billboard component */
     void ApplyToNPCFlipbooks(ANPCCharacter* NPC, const FAICharacterImageSet& ImageSet);
 
-    /** Apply generated textures to Player's PaperFlipbook components */
+    /** Apply generated textures to Player's Billboard component */
     void ApplyToPlayerFlipbooks(APlayerCharacter* PlayerCharacter, const FAICharacterImageSet& ImageSet);
 
     /** Apply generated textures to DialogueWidget's UI Images */
@@ -103,11 +105,7 @@ private:
     UPROPERTY()
     TMap<FString, TObjectPtr<UAICharacterImageSetAsyncAction>> PendingActions;
 
-    /** Cached generated pixel flipbooks per character (key = CharacterId) */
-    UPROPERTY()
-    TMap<FString, TObjectPtr<UPaperFlipbook>> CachedPixelFlipbooks;
-
-    /** Cached UI portrait texture per character (default/neutral expression) */
+    /** Cached UI portrait texture per character (key format = \"CharacterId|pixel\" or \"CharacterId|expression\") */
     UPROPERTY()
     TMap<FString, TObjectPtr<UTexture2D>> CachedPortraitTextures;
 

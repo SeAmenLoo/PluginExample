@@ -6,13 +6,25 @@
 #include "GameDataTypes.h"
 #include "ChunkManagerComponent.h"
 #include "AICharacterImageSetAsyncAction.h"
+#include "LLMRuntime/Public/LLMCacheSubsystem.h"
 #include "Engine/Texture2D.h"
-#include "PaperFlipbook.h"
-#include "PaperSprite.h"
 #include "Components/Image.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
+#include "ImageUtils.h"
+
+namespace
+{
+    UTexture2D* LoadTextureFromFile(const FString& FilePath)
+    {
+        if (!FPaths::FileExists(FilePath))
+        {
+            return nullptr;
+        }
+        return FImageUtils::ImportFileAsTexture2D(FilePath);
+    }
+}
 
 void UCharacterImageSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -23,7 +35,6 @@ void UCharacterImageSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UCharacterImageSubsystem::Deinitialize()
 {
     PendingActions.Empty();
-    CachedPixelFlipbooks.Empty();
     CachedPortraitTextures.Empty();
     CachedExpressionTextures.Empty();
     GeneratingCharacterIds.Empty();
@@ -39,7 +50,7 @@ bool UCharacterImageSubsystem::HasCachedImageSet(const FString& CharacterId) con
         return false;
     }
 
-    return CachedPixelFlipbooks.Contains(CharacterId);
+    return CachedPortraitTextures.Contains(CharacterId + TEXT("|pixel"));
 }
 
 void UCharacterImageSubsystem::RequestCharacterImageForNPC(ANPCCharacter* NPC, UDialogueWidget* DialogueWidget)
@@ -81,7 +92,16 @@ void UCharacterImageSubsystem::RequestCharacterImageInternal(
     APlayerCharacter* PlayerCharacter,
     UDialogueWidget* DialogueWidget)
 {
-    // 1. If already cached, apply immediately
+    bool bLLMCacheReplay = false;
+    if (UGameInstance* GameInst = GetGameInstance())
+    {
+        if (ULLMCacheSubsystem* CacheSubsystem = GameInst->GetSubsystem<ULLMCacheSubsystem>())
+        {
+            bLLMCacheReplay = CacheSubsystem->IsReplayModeEnabled();
+        }
+    }
+
+    // 1. If already cached in memory, apply immediately
     if (HasCachedImageSet(CharacterId))
     {
         UE_LOG(LogTemp, Log, TEXT("[CharacterImageSubsystem] Cache hit for character %s"), *CharacterId);
@@ -127,7 +147,14 @@ void UCharacterImageSubsystem::RequestCharacterImageInternal(
         return;
     }
 
-    // 4. Otherwise, fire async image generation
+    // 4. If LLM cache replay mode is on but no disk cache found, skip image generation
+    if (bLLMCacheReplay)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[CharacterImageSubsystem] LLM cache replay mode ON, skipping image generation for %s (no disk cache)"), *CharacterId);
+        return;
+    }
+
+    // 5. Otherwise, fire async image generation
     GeneratingCharacterIds.Add(CharacterId);
     if (NPC)
     {
@@ -209,6 +236,25 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
     Request.FilePrefix = Data.NPCId;
     Request.SaveDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CharacterImages"), Data.NPCId);
 
+    // Set style reference images for consistent art style
+    FString ProjectDir = FPaths::ProjectDir();
+
+    FString DetailRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Detail.png"));
+    if (FPaths::FileExists(DetailRefPath))
+    {
+        FAIImageReference DetailRef;
+        DetailRef.LocalFilePath = DetailRefPath;
+        Request.AdditionalReferences.Add(DetailRef);
+    }
+
+    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+    if (FPaths::FileExists(PixelRefPath))
+    {
+        FAIImageReference PixelRef;
+        PixelRef.LocalFilePath = PixelRefPath;
+        Request.PixelStyleReference = PixelRef;
+    }
+
     return Request;
 }
 
@@ -248,6 +294,25 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     Request.FilePrefix = PlayerCharacter->GetPlayerImageId();
     Request.SaveDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CharacterImages"), PlayerCharacter->GetPlayerImageId());
 
+    // Set style reference images for consistent art style
+    FString ProjectDir = FPaths::ProjectDir();
+
+    FString DetailRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Detail.png"));
+    if (FPaths::FileExists(DetailRefPath))
+    {
+        FAIImageReference DetailRef;
+        DetailRef.LocalFilePath = DetailRefPath;
+        Request.AdditionalReferences.Add(DetailRef);
+    }
+
+    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+    if (FPaths::FileExists(PixelRefPath))
+    {
+        FAIImageReference PixelRef;
+        PixelRef.LocalFilePath = PixelRefPath;
+        Request.PixelStyleReference = PixelRef;
+    }
+
     return Request;
 }
 
@@ -285,6 +350,31 @@ void UCharacterImageSubsystem::HandleImageSetResponse(const FAICharacterGenerati
 
 void UCharacterImageSubsystem::OnImageReadyForCharacter(const FString& CharacterId, const FAICharacterImageSet& ImageSet)
 {
+    // Cache pixel texture for character display
+    if (!ImageSet.PixelAnchor.Image.LocalFilePath.IsEmpty() && FPaths::FileExists(ImageSet.PixelAnchor.Image.LocalFilePath))
+    {
+        if (UTexture2D* PixelTexture = LoadTextureFromFile(ImageSet.PixelAnchor.Image.LocalFilePath))
+        {
+            CachedPortraitTextures.Add(CharacterId + TEXT("|pixel"), PixelTexture);
+        }
+    }
+
+    // Cache walk frame textures
+    if (!ImageSet.WalkLeft.Image.LocalFilePath.IsEmpty() && FPaths::FileExists(ImageSet.WalkLeft.Image.LocalFilePath))
+    {
+        if (UTexture2D* WalkTex = LoadTextureFromFile(ImageSet.WalkLeft.Image.LocalFilePath))
+        {
+            CachedPortraitTextures.Add(CharacterId + TEXT("|walk1"), WalkTex);
+        }
+    }
+    if (!ImageSet.WalkRight.Image.LocalFilePath.IsEmpty() && FPaths::FileExists(ImageSet.WalkRight.Image.LocalFilePath))
+    {
+        if (UTexture2D* WalkTex = LoadTextureFromFile(ImageSet.WalkRight.Image.LocalFilePath))
+        {
+            CachedPortraitTextures.Add(CharacterId + TEXT("|walk2"), WalkTex);
+        }
+    }
+
     if (TObjectPtr<ANPCCharacter>* NPCPtr = TrackedNPCs.Find(CharacterId))
     {
         if (*NPCPtr)
@@ -316,8 +406,7 @@ void UCharacterImageSubsystem::OnImageReadyForCharacter(const FString& Character
     {
         if (!Artifact.Image.LocalFilePath.IsEmpty() && FPaths::FileExists(Artifact.Image.LocalFilePath))
         {
-            UTexture2D* Texture = LoadObject<UTexture2D>(nullptr, *Artifact.Image.LocalFilePath);
-            if (Texture)
+            if (UTexture2D* Texture = LoadTextureFromFile(Artifact.Image.LocalFilePath))
             {
                 FString Key = CharacterId + TEXT("|") + ExpressionName.ToLower();
                 CachedExpressionTextures.Add(Key, Texture);
@@ -345,13 +434,10 @@ void UCharacterImageSubsystem::ApplyToNPCFlipbooks(ANPCCharacter* NPC, const FAI
     }
 
     const FString CharacterId = NPC->GetNPCId();
-
-    if (TObjectPtr<UPaperFlipbook>* PixelPtr = CachedPixelFlipbooks.Find(CharacterId))
+    UTexture2D* PixelTexture = GetCachedPortrait(CharacterId + TEXT("|pixel"));
+    if (PixelTexture)
     {
-        if (*PixelPtr)
-        {
-            NPC->SetPixelFlipbook(*PixelPtr);
-        }
+        NPC->SetSpriteFromTexture(PixelTexture, true);
     }
 }
 
@@ -363,13 +449,37 @@ void UCharacterImageSubsystem::ApplyToPlayerFlipbooks(APlayerCharacter* PlayerCh
     }
 
     const FString CharacterId = PlayerCharacter->GetPlayerImageId();
-
-    if (TObjectPtr<UPaperFlipbook>* PixelPtr = CachedPixelFlipbooks.Find(CharacterId))
+    UTexture2D* PixelTexture = GetCachedPortrait(CharacterId + TEXT("|pixel"));
+    if (PixelTexture)
     {
-        if (*PixelPtr)
-        {
-            PlayerCharacter->SetPixelFlipbook(*PixelPtr);
-        }
+        PlayerCharacter->SetSpriteFromTexture(PixelTexture);
+    }
+
+    // Load walk frames from ImageSet or cache
+    UTexture2D* WalkLeftTex = nullptr;
+    UTexture2D* WalkRightTex = nullptr;
+
+    if (!ImageSet.WalkLeft.Image.LocalFilePath.IsEmpty() && FPaths::FileExists(ImageSet.WalkLeft.Image.LocalFilePath))
+    {
+        WalkLeftTex = LoadTextureFromFile(ImageSet.WalkLeft.Image.LocalFilePath);
+    }
+    else
+    {
+        WalkLeftTex = GetCachedPortrait(CharacterId + TEXT("|walk1"));
+    }
+
+    if (!ImageSet.WalkRight.Image.LocalFilePath.IsEmpty() && FPaths::FileExists(ImageSet.WalkRight.Image.LocalFilePath))
+    {
+        WalkRightTex = LoadTextureFromFile(ImageSet.WalkRight.Image.LocalFilePath);
+    }
+    else
+    {
+        WalkRightTex = GetCachedPortrait(CharacterId + TEXT("|walk2"));
+    }
+
+    if (WalkLeftTex || WalkRightTex)
+    {
+        PlayerCharacter->SetWalkFrames(WalkLeftTex, WalkRightTex);
     }
 }
 
@@ -381,6 +491,20 @@ UTexture2D* UCharacterImageSubsystem::GetExpressionPortrait(const FString& Chara
     }
 
     FString Key = CharacterId + TEXT("|") + Expression.ToLower();
+    return GetCachedPortrait(Key);
+}
+
+UTexture2D* UCharacterImageSubsystem::GetCachedPortrait(const FString& Key) const
+{
+    if (Key.IsEmpty())
+    {
+        return nullptr;
+    }
+
+    if (const TObjectPtr<UTexture2D>* TexPtr = CachedPortraitTextures.Find(Key))
+    {
+        return *TexPtr;
+    }
     if (const TObjectPtr<UTexture2D>* TexPtr = CachedExpressionTextures.Find(Key))
     {
         return *TexPtr;
@@ -399,7 +523,7 @@ void UCharacterImageSubsystem::ApplyToDialogueWidget(UDialogueWidget* DialogueWi
 
     if (ImageSet.DetailAnchor.Image.LocalFilePath.Len() > 0 && FPaths::FileExists(ImageSet.DetailAnchor.Image.LocalFilePath))
     {
-        PortraitTexture = LoadObject<UTexture2D>(nullptr, *ImageSet.DetailAnchor.Image.LocalFilePath);
+        PortraitTexture = LoadTextureFromFile(ImageSet.DetailAnchor.Image.LocalFilePath);
     }
 
     if (PortraitTexture)
@@ -424,48 +548,94 @@ bool UCharacterImageSubsystem::TryLoadFlipbookTextures(const FString& CharacterI
 
     bool bAnyLoaded = false;
 
-    auto TryLoadImage = [&CacheDir, &bAnyLoaded](const FString& FileName, FAIImageResult& OutImage) -> bool
+    auto TryLoadImage = [&CacheDir, &bAnyLoaded](const FString& SubDir, const FString& FilePrefix, FAIImageResult& OutImage) -> bool
     {
-        FString FullPath = FPaths::Combine(CacheDir, FileName);
-        if (FPaths::FileExists(FullPath))
+        FString SubDirPath = FPaths::Combine(CacheDir, SubDir);
+        if (!FPaths::DirectoryExists(SubDirPath))
         {
-            OutImage.LocalFilePath = FullPath;
-            bAnyLoaded = true;
-            return true;
+            return false;
+        }
+
+        TArray<FString> Extensions = { TEXT("jpg"), TEXT("jpeg"), TEXT("png"), TEXT("webp") };
+        for (const FString& Ext : Extensions)
+        {
+            FString FileName = FilePrefix + TEXT("_01.") + Ext;
+            FString FullPath = FPaths::Combine(SubDirPath, FileName);
+            if (FPaths::FileExists(FullPath))
+            {
+                OutImage.LocalFilePath = FullPath;
+                bAnyLoaded = true;
+                return true;
+            }
         }
         return false;
     };
 
-    auto TryLoadExpression = [this, &CacheDir, &CharacterId, &bAnyLoaded](const FString& FileName, const FString& ExpressionName) -> UTexture2D*
+    // Load images from correct subdirectories with generated file names
+    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_detail_anchor"), OutImageSet.DetailAnchor.Image);
+    TryLoadImage(TEXT("pixel"), CharacterId + TEXT("_pixel_anchor"), OutImageSet.PixelAnchor.Image);
+    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_happy"), OutImageSet.Happy.Image);
+    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_angry"), OutImageSet.Angry.Image);
+    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_sad"), OutImageSet.Sad.Image);
+    TryLoadImage(TEXT("pixel"), CharacterId + TEXT("_walk_left"), OutImageSet.WalkLeft.Image);
+    TryLoadImage(TEXT("pixel"), CharacterId + TEXT("_walk_right"), OutImageSet.WalkRight.Image);
+
+    // Cache pixel texture for character display
+    if (!OutImageSet.PixelAnchor.Image.LocalFilePath.IsEmpty())
     {
-        FString FullPath = FPaths::Combine(CacheDir, FileName);
-        if (FPaths::FileExists(FullPath))
+        if (UTexture2D* PixelTexture = LoadTextureFromFile(OutImageSet.PixelAnchor.Image.LocalFilePath))
         {
-            UTexture2D* Texture = LoadObject<UTexture2D>(nullptr, *FullPath);
-            if (Texture)
-            {
-                FString Key = CharacterId + TEXT("|") + ExpressionName.ToLower();
-                CachedExpressionTextures.Add(Key, Texture);
-                bAnyLoaded = true;
-            }
-            return Texture;
+            CachedPortraitTextures.Add(CharacterId + TEXT("|pixel"), PixelTexture);
         }
-        return nullptr;
+    }
+
+    // Cache walk frame textures
+    if (!OutImageSet.WalkLeft.Image.LocalFilePath.IsEmpty())
+    {
+        if (UTexture2D* WalkTex = LoadTextureFromFile(OutImageSet.WalkLeft.Image.LocalFilePath))
+        {
+            CachedPortraitTextures.Add(CharacterId + TEXT("|walk1"), WalkTex);
+        }
+    }
+    if (!OutImageSet.WalkRight.Image.LocalFilePath.IsEmpty())
+    {
+        if (UTexture2D* WalkTex = LoadTextureFromFile(OutImageSet.WalkRight.Image.LocalFilePath))
+        {
+            CachedPortraitTextures.Add(CharacterId + TEXT("|walk2"), WalkTex);
+        }
+    }
+
+    // Cache expression textures for dialogue portrait switching
+    auto TryLoadExpression = [this, &CacheDir, &CharacterId, &bAnyLoaded](const FString& SubDir, const FString& FilePrefix, const FString& ExpressionName)
+    {
+        FString SubDirPath = FPaths::Combine(CacheDir, SubDir);
+        if (!FPaths::DirectoryExists(SubDirPath))
+        {
+            return;
+        }
+
+        TArray<FString> Extensions = { TEXT("jpg"), TEXT("jpeg"), TEXT("png"), TEXT("webp") };
+        for (const FString& Ext : Extensions)
+        {
+            FString FileName = FilePrefix + TEXT("_01.") + Ext;
+            FString FullPath = FPaths::Combine(SubDirPath, FileName);
+            if (FPaths::FileExists(FullPath))
+            {
+                if (UTexture2D* Texture = LoadTextureFromFile(FullPath))
+                {
+                    FString Key = CharacterId + TEXT("|") + ExpressionName.ToLower();
+                    CachedExpressionTextures.Add(Key, Texture);
+                    bAnyLoaded = true;
+                }
+                break;
+            }
+        }
     };
 
-    TryLoadImage(TEXT("DetailAnchor.png"), OutImageSet.DetailAnchor.Image);
-    TryLoadImage(TEXT("PixelAnchor.png"), OutImageSet.PixelAnchor.Image);
-    TryLoadImage(TEXT("Happy.png"), OutImageSet.Happy.Image);
-    TryLoadImage(TEXT("Angry.png"), OutImageSet.Angry.Image);
-    TryLoadImage(TEXT("Sad.png"), OutImageSet.Sad.Image);
-    TryLoadImage(TEXT("WalkLeft.png"), OutImageSet.WalkLeft.Image);
-    TryLoadImage(TEXT("WalkRight.png"), OutImageSet.WalkRight.Image);
-
-    // Also cache expression textures for dialogue portrait switching
-    TryLoadExpression(TEXT("DetailAnchor.png"), TEXT("neutral"));
-    TryLoadExpression(TEXT("Happy.png"), TEXT("happy"));
-    TryLoadExpression(TEXT("Angry.png"), TEXT("angry"));
-    TryLoadExpression(TEXT("Sad.png"), TEXT("sad"));
+    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_detail_anchor"), TEXT("neutral"));
+    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_happy"), TEXT("happy"));
+    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_angry"), TEXT("angry"));
+    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_sad"), TEXT("sad"));
 
     return bAnyLoaded;
 }

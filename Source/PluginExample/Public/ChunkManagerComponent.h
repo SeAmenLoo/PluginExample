@@ -148,9 +148,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LLM|Cache")
     bool bEnableCache = true;
 
-    /** Use cached responses instead of real API calls (for testing/replay) */
+    /** Use cached responses instead of real API calls (for testing/replay). 
+        Also checks ULLMCacheSubsystem's bReplayMode if available. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LLM|Cache")
     bool bUseCacheReplay = false;
+
+    /** Check if replay mode is active (checks both subsystem and component settings) */
+    bool IsReplayModeActive() const;
 
 protected:
     void OnInitialChunkGenerated(AGameChunkActor* Chunk);

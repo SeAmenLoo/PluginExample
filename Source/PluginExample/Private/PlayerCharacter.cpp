@@ -7,15 +7,15 @@
 #include "ChunkManagerComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
-#include "PaperFlipbookComponent.h"
-#include "PaperFlipbook.h"
-#include "PaperSprite.h"
 #include "Engine/Texture2D.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -41,12 +41,11 @@ APlayerCharacter::APlayerCharacter()
     FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
     FollowCamera->bUsePawnControlRotation = false;
 
-    // Pixel-art flipbook for in-world player display
-    PixelFlipbookComp = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("PixelFlipbookComp"));
-    PixelFlipbookComp->SetupAttachment(RootComponent);
-    PixelFlipbookComp->SetRelativeLocation(FVector(0, 0, -90.0f));
-    PixelFlipbookComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    PixelFlipbookComp->SetVisibility(true);
+    CharacterMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CharacterMesh"));
+    CharacterMesh->SetupAttachment(RootComponent);
+    CharacterMesh->SetRelativeLocation(FVector(0, 0, -90.0f));
+    CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    CharacterMesh->SetVisibility(true);
 
     NearbyNPC = nullptr;
     InteractionRadius = 200.0f;
@@ -55,6 +54,20 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
+
+    UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+    if (PlaneMesh)
+    {
+        CharacterMesh->SetStaticMesh(PlaneMesh);
+        CharacterMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+    }
+
+    UMaterial* BaseMaterial = LoadObject<UMaterial>(nullptr, TEXT("/Engine/EngineMaterials/DefaultLitMaterial.DefaultLitMaterial"));
+    if (BaseMaterial)
+    {
+        CharacterMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        CharacterMesh->SetMaterial(0, CharacterMaterial);
+    }
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -168,30 +181,28 @@ void APlayerCharacter::OnInteractPressed()
     }
 }
 
-void APlayerCharacter::SetPixelFlipbook(UPaperFlipbook* InFlipbook)
+void APlayerCharacter::SetSpriteFromTexture(UTexture2D* InTexture)
 {
-    PixelFlipbook = InFlipbook;
-    if (PixelFlipbookComp)
+    CurrentPixelTexture = InTexture;
+    if (CharacterMaterial)
     {
-        if (InFlipbook)
+        CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), InTexture);
+        if (InTexture)
         {
-            PixelFlipbookComp->SetFlipbook(InFlipbook);
-            PixelFlipbookComp->SetVisibility(true);
-            PixelFlipbookComp->Play();
+            CharacterMesh->SetVisibility(true);
         }
         else
         {
-            PixelFlipbookComp->SetVisibility(false);
+            CharacterMesh->SetVisibility(false);
         }
     }
 }
 
-void APlayerCharacter::SetSpriteFromTexture(UTexture2D* InTexture)
+void APlayerCharacter::SetWalkFrames(UTexture2D* Frame1, UTexture2D* Frame2)
 {
-    if (PixelFlipbookComp && InTexture)
-    {
-        PixelFlipbookComp->SetVisibility(true);
-    }
+    WalkFrameTextures.Empty();
+    if (Frame1) WalkFrameTextures.Add(Frame1);
+    if (Frame2) WalkFrameTextures.Add(Frame2);
 }
 
 void APlayerCharacter::CheckNearbyNPCs()
@@ -243,4 +254,36 @@ void APlayerCharacter::Tick(float DeltaSeconds)
     Super::Tick(DeltaSeconds);
 
     CheckNearbyNPCs();
+
+    // Simple walk animation: switch between 2 frames when moving
+    if (WalkFrameTextures.Num() >= 2 && CharacterMaterial)
+    {
+        const FVector Velocity = GetVelocity();
+        const bool bIsMoving = Velocity.SizeSquared2D() > 10.0f;
+
+        if (bIsMoving)
+        {
+            // Use timer to cycle frames every 0.3 seconds
+            if (!GetWorld()->GetTimerManager().IsTimerActive(WalkAnimTimer))
+            {
+                GetWorld()->GetTimerManager().SetTimer(WalkAnimTimer, [this]()
+                {
+                    if (WalkFrameTextures.Num() >= 2 && CharacterMaterial)
+                    {
+                        CurrentWalkFrame = (CurrentWalkFrame + 1) % WalkFrameTextures.Num();
+                        CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), WalkFrameTextures[CurrentWalkFrame]);
+                    }
+                }, 0.3f, true);
+            }
+        }
+        else
+        {
+            // Stop animation, show idle frame (first frame or current texture)
+            GetWorld()->GetTimerManager().ClearTimer(WalkAnimTimer);
+            if (CurrentPixelTexture && CharacterMaterial)
+            {
+                CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), CurrentPixelTexture);
+            }
+        }
+    }
 }

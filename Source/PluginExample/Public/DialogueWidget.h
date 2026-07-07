@@ -110,7 +110,9 @@ public:
     UFUNCTION(BlueprintCallable)
     void ApplyCustomStyling(const FUIStyleConfig& InStyleConfig);
 
-    /** Set background texture for the dialogue widget */
+    /** Set background texture for the dialogue widget *
+     * 
+     */
     UFUNCTION(BlueprintCallable)
     void SetBackgroundTexture(UTexture2D* BackgroundTexture);
 

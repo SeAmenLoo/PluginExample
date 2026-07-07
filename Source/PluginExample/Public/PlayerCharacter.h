@@ -9,8 +9,8 @@ class UCameraComponent;
 class USpringArmComponent;
 class ANPCCharacter;
 class UInputAction;
-class UPaperFlipbookComponent;
-class UPaperFlipbook;
+class UStaticMeshComponent;
+class UMaterialInstanceDynamic;
 class UTexture2D;
 
 UCLASS()
@@ -35,17 +35,17 @@ public:
     UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
     FString GetPlayerImageId() const { return TEXT("Player"); }
 
-    /** Apply generated pixel-art flipbook to player */
-    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
-    void SetPixelFlipbook(UPaperFlipbook* InFlipbook);
-
-    /** Build runtime single-frame flipbook from a texture (fallback path) */
+    /** Apply generated pixel-art texture to player billboard */
     UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
     void SetSpriteFromTexture(UTexture2D* InTexture);
 
-    /** Get current pixel flipbook */
+    /** Set walking animation frames (2 frames that will cycle when moving) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|CharacterImage")
+    void SetWalkFrames(UTexture2D* Frame1, UTexture2D* Frame2);
+
+    /** Get current pixel texture */
     UFUNCTION(BlueprintPure, Category = "RPG|CharacterImage")
-    UPaperFlipbook* GetPixelFlipbook() const { return PixelFlipbook; }
+    UTexture2D* GetCurrentPixelTexture() const { return CurrentPixelTexture; }
 
 protected:
     virtual void BeginPlay() override;
@@ -100,13 +100,29 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float InteractionRadius = 200.0f;
 
-    /** Pixel-art flipbook component used for in-world player display */
+    /** Static mesh component for in-world player display (plane with texture) */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "RPG|CharacterImage")
-    TObjectPtr<UPaperFlipbookComponent> PixelFlipbookComp;
+    TObjectPtr<UStaticMeshComponent> CharacterMesh;
 
-    /** Cached pixel-art flipbook asset */
+    /** Dynamic material instance for texture switching */
     UPROPERTY(BlueprintReadOnly, Category = "RPG|CharacterImage")
-    TObjectPtr<UPaperFlipbook> PixelFlipbook;
+    TObjectPtr<UMaterialInstanceDynamic> CharacterMaterial;
+
+    /** Current displayed pixel texture */
+    UPROPERTY(BlueprintReadOnly, Category = "RPG|CharacterImage")
+    TObjectPtr<UTexture2D> CurrentPixelTexture;
+
+    /** Walking animation frame textures */
+    UPROPERTY(BlueprintReadOnly, Category = "RPG|CharacterImage")
+    TArray<TObjectPtr<UTexture2D>> WalkFrameTextures;
+
+    /** Current walking frame index */
+    UPROPERTY()
+    int32 CurrentWalkFrame = 0;
+
+    /** Timer handle for walk animation */
+    UPROPERTY()
+    FTimerHandle WalkAnimTimer;
 
 private:
     UPROPERTY()

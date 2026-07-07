@@ -62,12 +62,21 @@ void UChunkManagerComponent::Deinitialize()
     Super::Deinitialize();
 }
 
+bool UChunkManagerComponent::IsReplayModeActive() const
+{
+    if (CacheSubsystem && CacheSubsystem->IsReplayModeEnabled())
+    {
+        return true;
+    }
+    return bUseCacheReplay;
+}
+
 void UChunkManagerComponent::GenerateWorldFromPrompt(const FString& WorldPrompt)
 {
     FString ActualPrompt = WorldPrompt;
 
     // In replay mode, auto-fill WorldPrompt from cache if user didn't provide one
-    if (bUseCacheReplay && WorldPrompt.IsEmpty() && CacheSubsystem)
+    if (IsReplayModeActive() && WorldPrompt.IsEmpty() && CacheSubsystem)
     {
         FLLMCacheEntry WorldGenEntry;
         if (CacheSubsystem->GetLastWorldGenCacheEntry(WorldGenEntry))
@@ -99,9 +108,9 @@ void UChunkManagerComponent::GenerateWorldFromPrompt(const FString& WorldPrompt)
         FLLMCacheEntry CachedEntry;
         if (CacheSubsystem->GetCachedResponse(Messages, CachedEntry))
         {
-            UE_LOG(LogTemp, Log, TEXT("[Cache] World generation cache hit! Replay mode: %d"), bUseCacheReplay);
+            UE_LOG(LogTemp, Log, TEXT("[Cache] World generation cache hit! Replay mode: %d"), IsReplayModeActive());
 
-            if (bUseCacheReplay)
+            if (IsReplayModeActive())
             {
                 FLLMChatResponse CachedResponse;
                 CachedResponse.bSuccess = CachedEntry.bWasSuccessful;
@@ -125,7 +134,7 @@ void UChunkManagerComponent::GenerateWorldFromPrompt(const FString& WorldPrompt)
                 UE_LOG(LogTemp, Log, TEXT("[Cache] Using cached response (will still call API for comparison)"));
             }
         }
-        else if (bUseCacheReplay)
+        else if (IsReplayModeActive())
         {
             UE_LOG(LogTemp, Error, TEXT("[Cache] Replay mode enabled but world generation cache miss! Aborting request."));
             OnWorldGenerationFailed.Broadcast(TEXT("Replay mode: no cached response found for world generation"));
@@ -685,9 +694,9 @@ void UChunkManagerComponent::GenerateNextChunk(const FString& FromChunkId, const
         FLLMCacheEntry CachedEntry;
         if (CacheSubsystem->GetCachedResponse(Messages, CachedEntry))
         {
-            UE_LOG(LogTemp, Log, TEXT("[Cache] Chunk generation cache hit! Replay mode: %d"), bUseCacheReplay);
+            UE_LOG(LogTemp, Log, TEXT("[Cache] Chunk generation cache hit! Replay mode: %d"), IsReplayModeActive());
 
-            if (bUseCacheReplay)
+            if (IsReplayModeActive())
             {
                 bIsGeneratingChunk = false;
                 FLLMChatResponse CachedResponse;
@@ -702,7 +711,7 @@ void UChunkManagerComponent::GenerateNextChunk(const FString& FromChunkId, const
                 return;
             }
         }
-        else if (bUseCacheReplay)
+        else if (IsReplayModeActive())
         {
             bIsGeneratingChunk = false;
             UE_LOG(LogTemp, Error, TEXT("[Cache] Replay mode enabled but chunk generation cache miss! Aborting request."));
@@ -1317,9 +1326,9 @@ void UChunkManagerComponent::SendDialogueRequest(bool bGenerateGreeting)
         FLLMCacheEntry CachedEntry;
         if (CacheSubsystem->GetCachedResponse(Messages, CachedEntry))
         {
-            UE_LOG(LogTemp, Log, TEXT("[Cache] Dialogue cache hit! Replay mode: %d"), bUseCacheReplay);
+            UE_LOG(LogTemp, Log, TEXT("[Cache] Dialogue cache hit! Replay mode: %d"), IsReplayModeActive());
 
-            if (bUseCacheReplay)
+            if (IsReplayModeActive())
             {
                 bIsWaitingForResponse = false;
                 if (ActiveDialogueWidget)
@@ -1336,7 +1345,7 @@ void UChunkManagerComponent::SendDialogueRequest(bool bGenerateGreeting)
                 return;
             }
         }
-        else if (bUseCacheReplay)
+        else if (IsReplayModeActive())
         {
             bIsWaitingForResponse = false;
             UE_LOG(LogTemp, Error, TEXT("[Cache] Replay mode enabled but dialogue cache miss! Aborting request."));
