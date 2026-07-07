@@ -30,7 +30,8 @@
 确保以下插件已启用：
 
 1. **LLMRuntime** 插件（位于 `Plugins/LLMRuntime/`）
-2. **BlueprintBuster** 插件（可选，用于蓝图调试）
+2. **AIImageGenerator** 插件（位于 `Plugins/AIImageGenerator/`）- 用于角色图生成
+3. **BlueprintBuster** 插件（可选，用于蓝图调试）
 
 ## 3. 配置 LLM Provider
 
@@ -982,12 +983,15 @@ TransitionToGame()
 ```json
 {
     "response_text": "NPC说的话，1-3句，保持角色",
-    "choices": ["选项1", "选项2", "选项3"]
+    "choices": ["选项1", "选项2", "选项3"],
+    "npc_expression": "happy",
+    "player_expression": "normal"
 }
 ```
 
 - `choices` 可以是空数组 `[]`（纯自由输入模式）
 - `choices` 通常 2-4 个选项
+- `npc_expression` 和 `player_expression` 用于切换对话立绘表情，支持值：`happy`、`angry`、`sad`、`normal`（或留空）
 
 ### 12.8 对话历史维护
 
@@ -1006,3 +1010,83 @@ Messages = [
 ```
 
 超过 `MaxDialogueHistorySize` 时自动裁剪早于 `MaxDialogueHistorySize-1` 的消息。
+
+---
+
+## 13. 角色图生成与表情切换
+
+### 13.1 概述
+
+系统集成了 AIImageGenerator 插件，支持动态生成 NPC 和玩家角色图，并根据 LLM 对话响应自动切换角色表情。
+
+### 13.2 角色图生成流程
+
+| 步骤 | 说明 | 触发时机 |
+|------|------|---------|
+| NPC 图集请求 | `RequestCharacterImageForNPC(NPC, ...)` | NPC 生成时 |
+| 玩家图集请求 | `RequestPlayerCharacterImage(PlayerCharacter)` | 世界生成完成后 |
+| 缓存检查 | `HasCachedImageSet(CharacterId)` | 请求前 |
+| 图集应用 | `ApplyToNPCFlipbooks` / `ApplyToPlayerFlipbooks` | 生成完成后 |
+| 立绘应用 | `SetNPCPortrait` / `SetPlayerPortrait` | 对话开始时 |
+
+### 13.3 生成的图像类型
+
+| 图像类型 | 说明 | 用途 |
+|----------|------|------|
+| `DetailAnchor` | 细节锚点图（常态表情） | 对话立绘（默认） |
+| `PixelAnchor` | 像素锚点图（站立） | 世界中角色显示 |
+| `Happy` | 喜悦表情 | 对话立绘（喜） |
+| `Angry` | 愤怒表情 | 对话立绘（怒） |
+| `Sad` | 哀伤表情 | 对话立绘（哀） |
+| `WalkLeft` | 左脚前迈 | 行走动画 |
+| `WalkRight` | 右脚前迈 | 行走动画 |
+
+### 13.4 表情切换机制
+
+#### 触发流程
+
+1. **LLM 对话请求**：提示词中包含 `npc_expression` 和 `player_expression` 字段要求
+2. **解析响应**：`HandleDialogueResponse` 解析表情字段
+3. **切换立绘**：根据表情调用 `SetNPCPortrait` / `SetPlayerPortrait`
+
+#### 表情映射
+
+| 表情值 | 使用的纹理 |
+|--------|-----------|
+| `happy` / `喜悦` | Happy 表情图 |
+| `angry` / `愤怒` | Angry 表情图 |
+| `sad` / `哀伤` | Sad 表情图 |
+| 其他 / 空 | DetailAnchor（常态） |
+
+### 13.5 角色外观数据来源
+
+角色图生成时使用 LLM 在世界生成阶段返回的 `appearance` 数据：
+
+```json
+{
+    "appearance": {
+        "gender": "男",
+        "age": "28",
+        "race": "人类",
+        "hair": "黑色中长发",
+        "face": "偏瘦长脸，锐利眉眼",
+        "outfit": "深灰长风衣，皮革护腕",
+        "palette": "深灰、墨绿、旧银"
+    }
+}
+```
+
+> **优化**：为节省 Token，仅在第一次世界生成时返回完整 `appearance` 数据，后续请求通过 `bIncludeAppearance=false` 控制不返回该字段。
+
+### 13.6 缓存机制
+
+| 缓存类型 | 路径 | 说明 |
+|----------|------|------|
+| NPC 配置缓存 | `Saved/NPCProfiles/{NPCId}.json` | NPC 数据和外观信息 |
+| 角色图缓存 | `Saved/AIImageGenerator/Characters/{角色名称}/` | AI 生成的角色图片 |
+
+### 13.7 相关文档
+
+- [角色图生成集成流程](file:///e:/Projects/UE/VRGame/git/PluginExample/Doc/CharacterImage_Integration_Workflow.md)
+- [角色资产生成工作流](file:///e:/Projects/UE/VRGame/git/PluginExample/Doc/Character_Asset_Generation_Workflow.md)
+- [AIImageGenerator 编辑器指南](file:///e:/Projects/UE/VRGame/git/PluginExample/Plugins/AIImageGenerator/Doc/EditorGuide.md)
