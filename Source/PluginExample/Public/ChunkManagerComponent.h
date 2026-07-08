@@ -64,6 +64,10 @@ public:
     UFUNCTION(BlueprintCallable)
     void StartDialogue(ANPCCharacter* NPC);
 
+    /** Handle character image ready callback to update dialogue UI */
+    UFUNCTION()
+    void HandleCharacterImageReady(const FString& CharacterId);
+
     /** End current dialogue */
     UFUNCTION(BlueprintCallable)
     void EndDialogue();

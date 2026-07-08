@@ -50,6 +50,11 @@ void UChunkManagerComponent::Initialize(FSubsystemCollectionBase& Collection)
     LLMLogger = GetGameInstance()->GetSubsystem<ULLMLoggerSubsystem>();
     CacheSubsystem = GetGameInstance()->GetSubsystem<ULLMCacheSubsystem>();
 
+    if (UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>())
+    {
+        ImageSubsystem->OnCharacterImageReady.AddDynamic(this, &UChunkManagerComponent::HandleCharacterImageReady);
+    }
+
     UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Initialize - CacheSubsystem: %p, bUseCacheReplay: %d"), 
         CacheSubsystem.Get(), bUseCacheReplay);
     if (CacheSubsystem)
@@ -61,6 +66,11 @@ void UChunkManagerComponent::Initialize(FSubsystemCollectionBase& Collection)
 
 void UChunkManagerComponent::Deinitialize()
 {
+    if (UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>())
+    {
+        ImageSubsystem->OnCharacterImageReady.RemoveDynamic(this, &UChunkManagerComponent::HandleCharacterImageReady);
+    }
+
     if (ActiveDialogueWidget)
     {
         ActiveDialogueWidget->RemoveFromParent();
@@ -976,6 +986,43 @@ void UChunkManagerComponent::UpdateAllChunkPortals()
         if (AGameChunkActor* Chunk = Pair.Value)
         {
             Chunk->RebuildExitPortals();
+        }
+    }
+}
+
+void UChunkManagerComponent::HandleCharacterImageReady(const FString& CharacterId)
+{
+    if (!ActiveDialogueWidget || !CurrentDialogueNPC)
+    {
+        return;
+    }
+
+    UCharacterImageSubsystem* ImageSubsystem = GetGameInstance()->GetSubsystem<UCharacterImageSubsystem>();
+    if (!ImageSubsystem)
+    {
+        return;
+    }
+
+    bool bIsNPC = CharacterId == CurrentNPCData.NPCId;
+    bool bIsPlayer = CharacterId == TEXT("Player");
+
+    if (bIsNPC)
+    {
+        UTexture2D* NPCTex = ImageSubsystem->GetExpressionPortrait(CharacterId, TEXT("neutral"));
+        if (NPCTex)
+        {
+            ActiveDialogueWidget->SetNPCPortrait(NPCTex);
+            UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Updated NPC portrait for %s"), *CharacterId);
+        }
+    }
+
+    if (bIsPlayer)
+    {
+        UTexture2D* PlayerTex = ImageSubsystem->GetExpressionPortrait(CharacterId, TEXT("neutral"));
+        if (PlayerTex)
+        {
+            ActiveDialogueWidget->SetPlayerPortrait(PlayerTex);
+            UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Updated Player portrait"));
         }
     }
 }

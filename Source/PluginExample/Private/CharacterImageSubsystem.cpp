@@ -16,13 +16,60 @@
 
 namespace
 {
+    void FilterWhiteBackground(UTexture2D* Texture);
+
     UTexture2D* LoadTextureFromFile(const FString& FilePath)
     {
         if (!FPaths::FileExists(FilePath))
         {
             return nullptr;
         }
-        return FImageUtils::ImportFileAsTexture2D(FilePath);
+        UTexture2D* Texture = FImageUtils::ImportFileAsTexture2D(FilePath);
+        if (Texture)
+        {
+            FilterWhiteBackground(Texture);
+        }
+        return Texture;
+    }
+
+    void FilterWhiteBackground(UTexture2D* Texture)
+    {
+        if (!Texture)
+        {
+            return;
+        }
+
+        FTexture2DMipMap& MipMap = Texture->GetPlatformData()->Mips[0];
+        FByteBulkData& BulkData = MipMap.BulkData;
+        uint8* PixelData = static_cast<uint8*>(BulkData.Lock(LOCK_READ_WRITE));
+        if (!PixelData)
+        {
+            return;
+        }
+
+        int32 Width = Texture->GetSizeX();
+        int32 Height = Texture->GetSizeY();
+        int32 BytesPerPixel = 4;
+
+        for (int32 Y = 0; Y < Height; Y++)
+        {
+            for (int32 X = 0; X < Width; X++)
+            {
+                int32 Index = (Y * Width + X) * BytesPerPixel;
+                uint8 B = PixelData[Index];
+                uint8 G = PixelData[Index + 1];
+                uint8 R = PixelData[Index + 2];
+
+                float Luminance = 0.299f * R + 0.587f * G + 0.114f * B;
+                if (Luminance > 230.0f)
+                {
+                    PixelData[Index + 3] = 0;
+                }
+            }
+        }
+
+        BulkData.Unlock();
+        Texture->UpdateResource();
     }
 }
 
@@ -215,7 +262,19 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
 
     FAICharacterSpec Spec;
     Spec.Name = Data.Name;
-    Spec.Personality = Data.Personality;
+    // Combine visual description and personality for richer prompt context
+    if (!Data.Description.IsEmpty() && !Data.Personality.IsEmpty())
+    {
+        Spec.Personality = Data.Description + TEXT("。") + Data.Personality;
+    }
+    else if (!Data.Description.IsEmpty())
+    {
+        Spec.Personality = Data.Description;
+    }
+    else
+    {
+        Spec.Personality = Data.Personality;
+    }
     Spec.Job = Data.Faction;
 
     FAICharacterGenerationRequest Request;
@@ -344,12 +403,17 @@ void UCharacterImageSubsystem::HandleImageSetResponse(const FAICharacterGenerati
     PendingActions.Remove(MatchedCharacterId);
     GeneratingCharacterIds.Remove(MatchedCharacterId);
 
+    if (Response.FailedSteps.Num() > 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[CharacterImageSubsystem] Partial image generation for character %s. Failed steps: %s"),
+            *MatchedCharacterId, *FString::Join(Response.FailedSteps, TEXT(", ")));
+    }
+
     if (!Response.bSuccess)
     {
         UE_LOG(LogTemp, Error, TEXT("[CharacterImageSubsystem] Image generation failed for character %s: %s"),
             *MatchedCharacterId, *Response.Error);
         OnCharacterImageFailed.Broadcast(MatchedCharacterId, Response.Error);
-        return;
     }
 
     OnImageReadyForCharacter(MatchedCharacterId, Response.Images);
