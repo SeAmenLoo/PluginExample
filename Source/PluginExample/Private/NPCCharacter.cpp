@@ -49,18 +49,26 @@ void ANPCCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+    UStaticMesh* PlaneMesh = Cast<UStaticMesh>(PlaneMeshAsset.TryLoad());
     if (PlaneMesh)
     {
         CharacterMesh->SetStaticMesh(PlaneMesh);
-        CharacterMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+        CharacterMesh->SetRelativeScale3D(PlaneScale);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Failed to load plane mesh from %s"), *PlaneMeshAsset.ToString());
     }
 
-    UMaterial* BaseMaterial = LoadObject<UMaterial>(nullptr, TEXT("/Engine/EngineMaterials/DefaultLitMaterial.DefaultLitMaterial"));
-    if (BaseMaterial)
+    UMaterialInterface* BaseMat = Cast<UMaterialInterface>(BaseMaterial.TryLoad());
+    if (BaseMat)
     {
-        CharacterMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        CharacterMaterial = UMaterialInstanceDynamic::Create(BaseMat, this);
         CharacterMesh->SetMaterial(0, CharacterMaterial);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Failed to load base material from %s"), *BaseMaterial.ToString());
     }
 
     InteractionSphere->OnComponentBeginOverlap.AddDynamic(this, &ANPCCharacter::OnInteractionOverlap);
@@ -80,7 +88,7 @@ void ANPCCharacter::SetSpriteFromTexture(UTexture2D* InTexture, bool bUseAsPixel
     CurrentPixelTexture = InTexture;
     if (CharacterMaterial)
     {
-        CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), InTexture);
+        CharacterMaterial->SetTextureParameterValue(TextureParameterName, InTexture);
         if (InTexture)
         {
             CharacterMesh->SetVisibility(true);

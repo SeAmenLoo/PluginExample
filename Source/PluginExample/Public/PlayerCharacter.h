@@ -100,11 +100,21 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float InteractionRadius = 200.0f;
 
-    /** Static mesh component for in-world player display (plane with texture) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FSoftObjectPath PlaneMeshAsset = FSoftObjectPath(TEXT("/Engine/BasicShapes/Plane.Plane"));
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FSoftObjectPath BaseMaterial = FSoftObjectPath(TEXT("/Paper2D/MaskedUnlitSpriteMaterial"));
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FName TextureParameterName = TEXT("SpriteTexture");
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FVector PlaneScale = FVector(1.0f, 1.0f, 1.0f);
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "RPG|CharacterImage")
     TObjectPtr<UStaticMeshComponent> CharacterMesh;
 
-    /** Dynamic material instance for texture switching */
     UPROPERTY(BlueprintReadOnly, Category = "RPG|CharacterImage")
     TObjectPtr<UMaterialInstanceDynamic> CharacterMaterial;
 

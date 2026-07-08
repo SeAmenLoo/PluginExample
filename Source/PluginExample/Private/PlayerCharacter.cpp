@@ -43,7 +43,7 @@ APlayerCharacter::APlayerCharacter()
 
     CharacterMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CharacterMesh"));
     CharacterMesh->SetupAttachment(RootComponent);
-    CharacterMesh->SetRelativeLocation(FVector(0, 0, -90.0f));
+    //CharacterMesh->SetRelativeLocation(FVector(0, 0, -90.0f));
     CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     CharacterMesh->SetVisibility(true);
 
@@ -55,18 +55,26 @@ void APlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+    UStaticMesh* PlaneMesh = Cast<UStaticMesh>(PlaneMeshAsset.TryLoad());
     if (PlaneMesh)
     {
         CharacterMesh->SetStaticMesh(PlaneMesh);
-        CharacterMesh->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
+        CharacterMesh->SetRelativeScale3D(PlaneScale);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Failed to load plane mesh from %s"), *PlaneMeshAsset.ToString());
     }
 
-    UMaterial* BaseMaterial = LoadObject<UMaterial>(nullptr, TEXT("/Engine/EngineMaterials/DefaultLitMaterial.DefaultLitMaterial"));
-    if (BaseMaterial)
+    UMaterialInterface* BaseMat = Cast<UMaterialInterface>(BaseMaterial.TryLoad());
+    if (BaseMat)
     {
-        CharacterMaterial = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        CharacterMaterial = UMaterialInstanceDynamic::Create(BaseMat, this);
         CharacterMesh->SetMaterial(0, CharacterMaterial);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Failed to load base material from %s"), *BaseMaterial.ToString());
     }
 }
 
@@ -186,7 +194,7 @@ void APlayerCharacter::SetSpriteFromTexture(UTexture2D* InTexture)
     CurrentPixelTexture = InTexture;
     if (CharacterMaterial)
     {
-        CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), InTexture);
+        CharacterMaterial->SetTextureParameterValue(TextureParameterName, InTexture);
         if (InTexture)
         {
             CharacterMesh->SetVisibility(true);
@@ -271,7 +279,7 @@ void APlayerCharacter::Tick(float DeltaSeconds)
                     if (WalkFrameTextures.Num() >= 2 && CharacterMaterial)
                     {
                         CurrentWalkFrame = (CurrentWalkFrame + 1) % WalkFrameTextures.Num();
-                        CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), WalkFrameTextures[CurrentWalkFrame]);
+                        CharacterMaterial->SetTextureParameterValue(TextureParameterName, WalkFrameTextures[CurrentWalkFrame]);
                     }
                 }, 0.3f, true);
             }
@@ -282,7 +290,7 @@ void APlayerCharacter::Tick(float DeltaSeconds)
             GetWorld()->GetTimerManager().ClearTimer(WalkAnimTimer);
             if (CurrentPixelTexture && CharacterMaterial)
             {
-                CharacterMaterial->SetTextureParameterValue(TEXT("BaseColor"), CurrentPixelTexture);
+                CharacterMaterial->SetTextureParameterValue(TextureParameterName, CurrentPixelTexture);
             }
         }
     }

@@ -87,6 +87,18 @@ public:
     TObjectPtr<UWidgetComponent> InteractionPromptWidget;
 
     /** Static mesh component that renders the pixel-art NPC visual used in-world */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FSoftObjectPath PlaneMeshAsset = FSoftObjectPath(TEXT("/Engine/BasicShapes/Plane.Plane"));
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FSoftObjectPath BaseMaterial = FSoftObjectPath(TEXT("/Paper2D/MaskedUnlitSpriteMaterial"));
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FName TextureParameterName = TEXT("SpriteTexture");
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    FVector PlaneScale = FVector(1.0f, 1.0f, 1.0f);
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "RPG|CharacterImage")
     TObjectPtr<UStaticMeshComponent> CharacterMesh;
 

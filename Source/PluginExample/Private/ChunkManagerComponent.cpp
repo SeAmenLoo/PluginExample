@@ -49,6 +49,14 @@ void UChunkManagerComponent::Initialize(FSubsystemCollectionBase& Collection)
 
     LLMLogger = GetGameInstance()->GetSubsystem<ULLMLoggerSubsystem>();
     CacheSubsystem = GetGameInstance()->GetSubsystem<ULLMCacheSubsystem>();
+
+    UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Initialize - CacheSubsystem: %p, bUseCacheReplay: %d"), 
+        CacheSubsystem.Get(), bUseCacheReplay);
+    if (CacheSubsystem)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Initialize - Subsystem bReplayMode: %d, EntryCount: %d"), 
+            CacheSubsystem->IsReplayModeEnabled(), CacheSubsystem->GetCacheEntryCount());
+    }
 }
 
 void UChunkManagerComponent::Deinitialize()
@@ -64,11 +72,17 @@ void UChunkManagerComponent::Deinitialize()
 
 bool UChunkManagerComponent::IsReplayModeActive() const
 {
+    // Component's own setting takes priority
+    if (bUseCacheReplay)
+    {
+        return true;
+    }
+    // Fall back to subsystem's setting
     if (CacheSubsystem && CacheSubsystem->IsReplayModeEnabled())
     {
         return true;
     }
-    return bUseCacheReplay;
+    return false;
 }
 
 void UChunkManagerComponent::GenerateWorldFromPrompt(const FString& WorldPrompt)
@@ -100,15 +114,24 @@ void UChunkManagerComponent::GenerateWorldFromPrompt(const FString& WorldPrompt)
 
     TArray<FLLMChatMessage> Messages;
     Messages.Add(FLLMChatMessage{TEXT("system"), SystemPrompt});
-    Messages.Add(FLLMChatMessage{TEXT("user"), WorldPrompt});
+    Messages.Add(FLLMChatMessage{TEXT("user"), ActualPrompt});
 
-    // Check cache first
+    UE_LOG(LogTemp, Log, TEXT("[Cache] bEnableCache: %d, CacheSubsystem: %p, IsReplayMode: %d"), 
+        bEnableCache, CacheSubsystem.Get(), IsReplayModeActive());
+
+    if (bEnableCache && CacheSubsystem)
+    {
+        const FString RequestHash = CacheSubsystem->GenerateRequestHash(Messages);
+        UE_LOG(LogTemp, Log, TEXT("[Cache] Request hash: %s"), *RequestHash);
+    }
+
+    // Check cache first - WorldGen uses type-based matching (latest WorldGen entry)
     if (bEnableCache && CacheSubsystem)
     {
         FLLMCacheEntry CachedEntry;
-        if (CacheSubsystem->GetCachedResponse(Messages, CachedEntry))
+        if (CacheSubsystem->GetLastWorldGenCacheEntry(CachedEntry))
         {
-            UE_LOG(LogTemp, Log, TEXT("[Cache] World generation cache hit! Replay mode: %d"), IsReplayModeActive());
+            UE_LOG(LogTemp, Log, TEXT("[Cache] World generation cache hit (type match)! Replay mode: %d"), IsReplayModeActive());
 
             if (IsReplayModeActive())
             {
@@ -687,14 +710,14 @@ void UChunkManagerComponent::GenerateNextChunk(const FString& FromChunkId, const
     Messages.Add(FLLMChatMessage{TEXT("system"), SystemPrompt});
     Messages.Add(FLLMChatMessage{TEXT("user"), UserPrompt});
 
-    // Check cache first
+    // Check cache first - ChunkGen uses type-based matching (latest ChunkGen entry)
     FString CacheContext = FString::Printf(TEXT("from=%s exit=%s"), *FromChunkId, *ExitId);
     if (bEnableCache && CacheSubsystem)
     {
         FLLMCacheEntry CachedEntry;
-        if (CacheSubsystem->GetCachedResponse(Messages, CachedEntry))
+        if (CacheSubsystem->GetLastChunkGenCacheEntry(CachedEntry))
         {
-            UE_LOG(LogTemp, Log, TEXT("[Cache] Chunk generation cache hit! Replay mode: %d"), IsReplayModeActive());
+            UE_LOG(LogTemp, Log, TEXT("[Cache] Chunk generation cache hit (type match)! Replay mode: %d"), IsReplayModeActive());
 
             if (IsReplayModeActive())
             {
@@ -1319,14 +1342,14 @@ void UChunkManagerComponent::SendDialogueRequest(bool bGenerateGreeting)
         }
     }
 
-    // Check cache first
+    // Check cache first - Dialogue uses NPC-based matching (latest Dialogue entry for this NPC)
     FString DialogueCacheContext = FString::Printf(TEXT("npc=%s"), *CurrentNPCData.Name);
     if (bEnableCache && CacheSubsystem)
     {
         FLLMCacheEntry CachedEntry;
-        if (CacheSubsystem->GetCachedResponse(Messages, CachedEntry))
+        if (CacheSubsystem->GetLastDialogueCacheEntryForNPC(CurrentNPCData.Name, CachedEntry))
         {
-            UE_LOG(LogTemp, Log, TEXT("[Cache] Dialogue cache hit! Replay mode: %d"), IsReplayModeActive());
+            UE_LOG(LogTemp, Log, TEXT("[Cache] Dialogue cache hit (NPC match: %s)! Replay mode: %d"), *CurrentNPCData.Name, IsReplayModeActive());
 
             if (IsReplayModeActive())
             {

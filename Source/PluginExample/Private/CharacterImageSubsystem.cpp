@@ -92,15 +92,6 @@ void UCharacterImageSubsystem::RequestCharacterImageInternal(
     APlayerCharacter* PlayerCharacter,
     UDialogueWidget* DialogueWidget)
 {
-    bool bLLMCacheReplay = false;
-    if (UGameInstance* GameInst = GetGameInstance())
-    {
-        if (ULLMCacheSubsystem* CacheSubsystem = GameInst->GetSubsystem<ULLMCacheSubsystem>())
-        {
-            bLLMCacheReplay = CacheSubsystem->IsReplayModeEnabled();
-        }
-    }
-
     // 1. If already cached in memory, apply immediately
     if (HasCachedImageSet(CharacterId))
     {
@@ -128,10 +119,12 @@ void UCharacterImageSubsystem::RequestCharacterImageInternal(
         return;
     }
 
-    // 3. If disk cache exists, try to load from disk first
+    // 3. If disk cache exists, load from disk first
     FAICharacterImageSet DiskCached;
     if (TryLoadFlipbookTextures(CharacterId, DiskCached))
     {
+        UE_LOG(LogTemp, Log, TEXT("[CharacterImageSubsystem] Disk cache hit for character %s"), *CharacterId);
+
         if (NPC)
         {
             ApplyToNPCFlipbooks(NPC, DiskCached);
@@ -147,14 +140,8 @@ void UCharacterImageSubsystem::RequestCharacterImageInternal(
         return;
     }
 
-    // 4. If LLM cache replay mode is on but no disk cache found, skip image generation
-    if (bLLMCacheReplay)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[CharacterImageSubsystem] LLM cache replay mode ON, skipping image generation for %s (no disk cache)"), *CharacterId);
-        return;
-    }
-
-    // 5. Otherwise, fire async image generation
+    // 4. Otherwise, fire async image generation
+    UE_LOG(LogTemp, Log, TEXT("[CharacterImageSubsystem] Starting image generation for character %s"), *CharacterId);
     GeneratingCharacterIds.Add(CharacterId);
     if (NPC)
     {
@@ -247,12 +234,22 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
         Request.AdditionalReferences.Add(DetailRef);
     }
 
-    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
     if (FPaths::FileExists(PixelRefPath))
     {
         FAIImageReference PixelRef;
         PixelRef.LocalFilePath = PixelRefPath;
         Request.PixelStyleReference = PixelRef;
+    }
+    else
+    {
+        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+        if (FPaths::FileExists(PixelRefPath))
+        {
+            FAIImageReference PixelRef;
+            PixelRef.LocalFilePath = PixelRefPath;
+            Request.PixelStyleReference = PixelRef;
+        }
     }
 
     return Request;
@@ -305,12 +302,22 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
         Request.AdditionalReferences.Add(DetailRef);
     }
 
-    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
     if (FPaths::FileExists(PixelRefPath))
     {
         FAIImageReference PixelRef;
         PixelRef.LocalFilePath = PixelRefPath;
         Request.PixelStyleReference = PixelRef;
+    }
+    else
+    {
+        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+        if (FPaths::FileExists(PixelRefPath))
+        {
+            FAIImageReference PixelRef;
+            PixelRef.LocalFilePath = PixelRefPath;
+            Request.PixelStyleReference = PixelRef;
+        }
     }
 
     return Request;
