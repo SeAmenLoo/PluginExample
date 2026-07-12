@@ -8,6 +8,7 @@
 #include "AICharacterImageSetAsyncAction.h"
 #include "LLMRuntime/Public/LLMCacheSubsystem.h"
 #include "Engine/Texture2D.h"
+#include "Engine/Texture.h"
 #include "Components/Image.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
@@ -16,60 +17,13 @@
 
 namespace
 {
-    void FilterWhiteBackground(UTexture2D* Texture);
-
     UTexture2D* LoadTextureFromFile(const FString& FilePath)
     {
         if (!FPaths::FileExists(FilePath))
         {
             return nullptr;
         }
-        UTexture2D* Texture = FImageUtils::ImportFileAsTexture2D(FilePath);
-        if (Texture)
-        {
-            FilterWhiteBackground(Texture);
-        }
-        return Texture;
-    }
-
-    void FilterWhiteBackground(UTexture2D* Texture)
-    {
-        if (!Texture)
-        {
-            return;
-        }
-
-        FTexture2DMipMap& MipMap = Texture->GetPlatformData()->Mips[0];
-        FByteBulkData& BulkData = MipMap.BulkData;
-        uint8* PixelData = static_cast<uint8*>(BulkData.Lock(LOCK_READ_WRITE));
-        if (!PixelData)
-        {
-            return;
-        }
-
-        int32 Width = Texture->GetSizeX();
-        int32 Height = Texture->GetSizeY();
-        int32 BytesPerPixel = 4;
-
-        for (int32 Y = 0; Y < Height; Y++)
-        {
-            for (int32 X = 0; X < Width; X++)
-            {
-                int32 Index = (Y * Width + X) * BytesPerPixel;
-                uint8 B = PixelData[Index];
-                uint8 G = PixelData[Index + 1];
-                uint8 R = PixelData[Index + 2];
-
-                float Luminance = 0.299f * R + 0.587f * G + 0.114f * B;
-                if (Luminance > 230.0f)
-                {
-                    PixelData[Index + 3] = 0;
-                }
-            }
-        }
-
-        BulkData.Unlock();
-        Texture->UpdateResource();
+        return FImageUtils::ImportFileAsTexture2D(FilePath);
     }
 }
 
@@ -212,6 +166,7 @@ void UCharacterImageSubsystem::RequestCharacterImageInternal(
     UAICharacterImageSetAsyncAction* Action = UAICharacterImageSetAsyncAction::GenerateCharacterImageSet(this, Request);
     if (Action)
     {
+        Action->Progressed.AddDynamic(this, &UCharacterImageSubsystem::HandleImageSetProgress);
         Action->Completed.AddDynamic(this, &UCharacterImageSubsystem::HandleImageSetResponse);
         PendingActions.Add(CharacterId, Action);
         Action->Activate();
@@ -285,15 +240,7 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
     // Set style reference images for consistent art style
     FString ProjectDir = FPaths::ProjectDir();
 
-    FString DetailRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Detail.png"));
-    if (FPaths::FileExists(DetailRefPath))
-    {
-        FAIImageReference DetailRef;
-        DetailRef.LocalFilePath = DetailRefPath;
-        Request.AdditionalReferences.Add(DetailRef);
-    }
-
-    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
+    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
     if (FPaths::FileExists(PixelRefPath))
     {
         FAIImageReference PixelRef;
@@ -302,7 +249,7 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
     }
     else
     {
-        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
         if (FPaths::FileExists(PixelRefPath))
         {
             FAIImageReference PixelRef;
@@ -353,15 +300,7 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     // Set style reference images for consistent art style
     FString ProjectDir = FPaths::ProjectDir();
 
-    FString DetailRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Detail.png"));
-    if (FPaths::FileExists(DetailRefPath))
-    {
-        FAIImageReference DetailRef;
-        DetailRef.LocalFilePath = DetailRefPath;
-        Request.AdditionalReferences.Add(DetailRef);
-    }
-
-    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
+    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
     if (FPaths::FileExists(PixelRefPath))
     {
         FAIImageReference PixelRef;
@@ -370,7 +309,7 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     }
     else
     {
-        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
+        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
         if (FPaths::FileExists(PixelRefPath))
         {
             FAIImageReference PixelRef;
@@ -382,16 +321,38 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     return Request;
 }
 
+void UCharacterImageSubsystem::HandleImageSetProgress(const FAICharacterGenerationResponse& Response)
+{
+    if (Response.CharacterId.IsEmpty())
+    {
+        return;
+    }
+
+    const bool bHasDetailReady = Response.CompletedSteps.Contains(TEXT("DetailAnchor"));
+    const bool bHasPixelReady = Response.CompletedSteps.Contains(TEXT("PixelAnchor"));
+
+    if (!bHasDetailReady && !bHasPixelReady)
+    {
+        return;
+    }
+
+    OnImageReadyForCharacter(Response.CharacterId, Response.Images);
+}
+
 void UCharacterImageSubsystem::HandleImageSetResponse(const FAICharacterGenerationResponse& Response)
 {
-    FString MatchedCharacterId;
+    FString MatchedCharacterId = Response.CharacterId;
 
-    for (const TPair<FString, TObjectPtr<UAICharacterImageSetAsyncAction>>& Pair : PendingActions)
+    if (MatchedCharacterId.IsEmpty())
     {
-        if (Pair.Value)
+        for (const TPair<FString, TObjectPtr<UAICharacterImageSetAsyncAction>>& Pair : PendingActions)
         {
-            MatchedCharacterId = Pair.Key;
-            break;
+            if (Pair.Value)
+            {
+                MatchedCharacterId = Pair.Key;
+                UE_LOG(LogTemp, Warning, TEXT("[CharacterImageSubsystem] Response missing CharacterId, falling back to first pending action: %s"), *MatchedCharacterId);
+                break;
+            }
         }
     }
 

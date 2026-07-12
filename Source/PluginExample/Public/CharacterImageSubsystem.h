@@ -10,6 +10,8 @@ class APlayerCharacter;
 class UDialogueWidget;
 class UTexture2D;
 class UAICharacterImageSetAsyncAction;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCharacterImageReady, const FString&, CharacterId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnCharacterImageFailed, const FString&, CharacterId, const FString&, Error);
@@ -80,6 +82,9 @@ private:
     FAICharacterGenerationRequest BuildImageRequestForPlayer(APlayerCharacter* PlayerCharacter) const;
 
     /** Async callback: image generation completed. */
+    UFUNCTION()
+    void HandleImageSetProgress(const FAICharacterGenerationResponse& Response);
+
     UFUNCTION()
     void HandleImageSetResponse(const FAICharacterGenerationResponse& Response);
 

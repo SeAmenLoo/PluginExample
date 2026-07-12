@@ -201,6 +201,10 @@ public:
     UPROPERTY(BlueprintReadWrite, meta = (BindWidgetOptional))
     TObjectPtr<UImage> PlayerPortraitImage;
 
+    /** 用于白色背景透明化的基础材质（User Interface域） */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "RPG|CharacterImage")
+    TObjectPtr<UMaterialInterface> WhiteBgTransparentMaterial;
+
     /** NPC name text */
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
     TObjectPtr<UTextBlock> NPCNameText;

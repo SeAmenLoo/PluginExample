@@ -13,8 +13,10 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Blueprint/SlateBlueprintLibrary.h"
 #include "Components/NamedSlot.h"
+#include "Engine/Texture2D.h"
 #include "Widgets/Input/SButton.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 void UDialogueWidget::NativeConstruct()
 {
@@ -656,11 +658,27 @@ void UDialogueWidget::SetPlayerPortrait(UTexture2D* InTexture)
 
     if (InTexture)
     {
-        FSlateBrush Brush;
-        Brush.SetResourceObject(InTexture);
-        Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
-        Brush.DrawAs = ESlateBrushDrawType::Image;
-        PlayerPortraitImage->SetBrush(Brush);
+        if (WhiteBgTransparentMaterial)
+        {
+            UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(WhiteBgTransparentMaterial, this);
+            if (MID)
+            {
+                MID->SetTextureParameterValue(TEXT("SpriteTexture"), InTexture);
+                FSlateBrush Brush;
+                Brush.SetResourceObject(MID);
+                Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
+                Brush.DrawAs = ESlateBrushDrawType::Image;
+                PlayerPortraitImage->SetBrush(Brush);
+            }
+        }
+        else
+        {
+            FSlateBrush Brush;
+            Brush.SetResourceObject(InTexture);
+            Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
+            Brush.DrawAs = ESlateBrushDrawType::Image;
+            PlayerPortraitImage->SetBrush(Brush);
+        }
         PlayerPortraitImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
     }
     else
