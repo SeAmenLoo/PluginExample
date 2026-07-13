@@ -6,7 +6,11 @@
 [Bb]inaries/
 [Dd]erivedDataCache/
 [Ii]ntermediate/
-[Ss]aved/
+[Ss]aved/*
+![Ss]aved/Provider/
+![Ss]aved/CharacterImages/
+![Ss]aved/CachedLLM/
+![Ss]aved/Res/
 
 # IDE
 .idea/
@@ -42,3 +46,8 @@ desktop.ini
 
 # Backup
 Plugins/bak/
+
+
+
+Test/
+UI_Concepts/
