@@ -1,0 +1,30 @@
+{
+  "_comment": "LLM Provider Config - Place this file at Saved/Providers/LLMProvider.json to override Project Settings",
+  "BaseUrl": "https://ark.cn-beijing.volces.com",
+  "_BaseUrl_comment": "API 基础地址",
+  "ChatCompletionPath": "/api/v3/chat/completions",
+  "_ChatCompletionPath_comment": "聊天完成接口路径",
+  "ApiKey": "YOUR_API_KEY_HERE",
+  "_ApiKey_comment": "API 密钥，也可通过环境变量 LLM_API_KEY / ARK_API_KEY 设置",
+  "Model": "doubao-seed-2-0-mini-260428",
+  "_Model_comment": "模型名称",
+  "DefaultTimeoutSeconds": 60.0,
+  "_DefaultTimeoutSeconds_comment": "默认请求超时时间（秒）",
+  "SchemaConfig": {
+    "_comment": "JSON Schema 配置",
+    "Mode": "JsonSchema",
+    "_Mode_comment": "模式：None / JsonObject / JsonSchema",
+    "ResponseFormatSchemaField": "json_schema",
+    "_ResponseFormatSchemaField_comment": "JsonSchema 模式下的 schema 字段名",
+    "SchemaNameField": "name",
+    "_SchemaNameField_comment": "JsonSchema 模式下的名称字段名",
+    "SchemaContentField": "schema",
+    "_SchemaContentField_comment": "JsonSchema 模式下的内容字段名",
+    "bUseStrict": true,
+    "_bUseStrict_comment": "是否启用严格模式"
+  },
+  "DefaultThinkingMode": "Disabled",
+  "_DefaultThinkingMode_comment": "默认思考模式：Default / Disabled / Enabled / Auto",
+  "DefaultExtraBodyJson": "",
+  "_DefaultExtraBodyJson_comment": "额外的请求体 JSON 字段（JSON 格式字符串）"
+}
