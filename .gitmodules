@@ -1,0 +1,9 @@
+[submodule "Plugins/BlueprintBuster"]
+	path = Plugins/BlueprintBuster
+	url = https://github.com/SeAmenLoo/BlueprintBuster.git
+[submodule "Plugins/LLMRuntime"]
+	path = Plugins/LLMRuntime
+	url = https://github.com/SeAmenLoo/LLMRuntime.git
+[submodule "Plugins/AIImageGenerator"]
+	path = Plugins/AIImageGenerator
+	url = https://github.com/SeAmenLoo/AIImageGenerator.git
