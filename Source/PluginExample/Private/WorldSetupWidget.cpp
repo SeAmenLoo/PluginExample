@@ -7,6 +7,8 @@
 #include "Components/TextBlock.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Input/Events.h"
+#include "Engine/GameInstance.h"
+#include "LLMRuntime/Public/LLMCacheSubsystem.h"
 
 void UWorldSetupWidget::NativeConstruct()
 {
@@ -20,12 +22,13 @@ void UWorldSetupWidget::NativeConstruct()
 
     if (GameStyleSelector)
     {
-        GameStyleSelector->AddOption(TEXT("Medieval Fantasy"));
-        GameStyleSelector->AddOption(TEXT("Sci-Fi Future"));
-        GameStyleSelector->AddOption(TEXT("Modern Horror"));
-        GameStyleSelector->AddOption(TEXT("Post-Apocalyptic"));
-        GameStyleSelector->AddOption(TEXT("Custom"));
-        GameStyleSelector->SetSelectedOption(TEXT("Medieval Fantasy"));
+        GameStyleSelector->AddOption(TEXT("中世纪奇幻"));
+        GameStyleSelector->AddOption(TEXT("科幻未来"));
+        GameStyleSelector->AddOption(TEXT("现代恐怖"));
+        GameStyleSelector->AddOption(TEXT("后末日"));
+        GameStyleSelector->AddOption(TEXT("自定义"));
+        GameStyleSelector->AddOption(TEXT("使用缓存"));
+        GameStyleSelector->SetSelectedOption(TEXT("中世纪奇幻"));
     }
 
     // Apply custom styling
@@ -46,29 +49,55 @@ FReply UWorldSetupWidget::NativeOnPreviewKeyDown(const FGeometry& InGeometry, co
 void UWorldSetupWidget::OnStartGameClicked()
 {
     FString Prompt = TEXT("Create a ");
+    bool bUseCacheReplay = false;
 
     if (GameStyleSelector)
     {
         FString Style = GameStyleSelector->GetSelectedOption();
-        Prompt += Style + TEXT(" style ");
+        if (Style == TEXT("使用缓存"))
+        {
+            bUseCacheReplay = true;
+            Prompt = TEXT("");
+        }
+        else
+        {
+            Prompt += Style + TEXT(" style ");
+        }
     }
     else
     {
         Prompt += TEXT("medieval fantasy ");
     }
 
-    if (WorldPromptTextBox && !WorldPromptTextBox->GetText().IsEmpty())
+    if (!bUseCacheReplay)
     {
-        Prompt += TEXT("world with the following details: ") + WorldPromptTextBox->GetText().ToString();
-    }
-    else
-    {
-        Prompt += TEXT("world with a rich lore, diverse factions, and interesting characters.");
+        if (WorldPromptTextBox && !WorldPromptTextBox->GetText().IsEmpty())
+        {
+            Prompt += TEXT("world with the following details: ") + WorldPromptTextBox->GetText().ToString();
+        }
+        else
+        {
+            Prompt += TEXT("world with a rich lore, diverse factions, and interesting characters.");
+        }
+
+        if (PlayerCharacterNameBox && !PlayerCharacterNameBox->GetText().IsEmpty())
+        {
+            Prompt += FString::Printf(TEXT(" The player's character name is: %s."), *PlayerCharacterNameBox->GetText().ToString());
+        }
     }
 
-    if (PlayerCharacterNameBox && !PlayerCharacterNameBox->GetText().IsEmpty())
+    if (bUseCacheReplay)
     {
-        Prompt += FString::Printf(TEXT(" The player's character name is: %s."), *PlayerCharacterNameBox->GetText().ToString());
+        UGameInstance* GI = GetGameInstance();
+        if (GI)
+        {
+            ULLMCacheSubsystem* CacheSubsystem = GI->GetSubsystem<ULLMCacheSubsystem>();
+            if (CacheSubsystem)
+            {
+                CacheSubsystem->SetReplayMode(true);
+                UE_LOG(LogTemp, Log, TEXT("[WorldSetup] Enabled cache replay mode"));
+            }
+        }
     }
 
     OnWorldSetupComplete.Broadcast(Prompt);

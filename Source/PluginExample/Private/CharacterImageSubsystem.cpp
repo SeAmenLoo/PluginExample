@@ -622,7 +622,7 @@ bool UCharacterImageSubsystem::TryLoadFlipbookTextures(const FString& CharacterI
         TArray<FString> Extensions = { TEXT("jpg"), TEXT("jpeg"), TEXT("png"), TEXT("webp") };
         for (const FString& Ext : Extensions)
         {
-            FString FileName = FilePrefix + TEXT("_01.") + Ext;
+            FString FileName = FilePrefix + TEXT(".") + Ext;
             FString FullPath = FPaths::Combine(SubDirPath, FileName);
             if (FPaths::FileExists(FullPath))
             {
@@ -635,13 +635,13 @@ bool UCharacterImageSubsystem::TryLoadFlipbookTextures(const FString& CharacterI
     };
 
     // Load images from correct subdirectories with generated file names
-    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_detail_anchor"), OutImageSet.DetailAnchor.Image);
-    TryLoadImage(TEXT("pixel"), CharacterId + TEXT("_pixel_anchor"), OutImageSet.PixelAnchor.Image);
-    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_happy"), OutImageSet.Happy.Image);
-    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_angry"), OutImageSet.Angry.Image);
-    TryLoadImage(TEXT("detail"), CharacterId + TEXT("_sad"), OutImageSet.Sad.Image);
-    TryLoadImage(TEXT("pixel"), CharacterId + TEXT("_walk_left"), OutImageSet.WalkLeft.Image);
-    TryLoadImage(TEXT("pixel"), CharacterId + TEXT("_walk_right"), OutImageSet.WalkRight.Image);
+    TryLoadImage(TEXT("detail"), TEXT("detail_anchor"), OutImageSet.DetailAnchor.Image);
+    TryLoadImage(TEXT("pixel"), TEXT("pixel_anchor"), OutImageSet.PixelAnchor.Image);
+    TryLoadImage(TEXT("detail"), TEXT("happy"), OutImageSet.Happy.Image);
+    TryLoadImage(TEXT("detail"), TEXT("angry"), OutImageSet.Angry.Image);
+    TryLoadImage(TEXT("detail"), TEXT("sad"), OutImageSet.Sad.Image);
+    TryLoadImage(TEXT("pixel"), TEXT("walk_left"), OutImageSet.WalkLeft.Image);
+    TryLoadImage(TEXT("pixel"), TEXT("walk_right"), OutImageSet.WalkRight.Image);
 
     // Cache pixel texture for character display
     if (!OutImageSet.PixelAnchor.Image.LocalFilePath.IsEmpty())
@@ -680,7 +680,7 @@ bool UCharacterImageSubsystem::TryLoadFlipbookTextures(const FString& CharacterI
         TArray<FString> Extensions = { TEXT("jpg"), TEXT("jpeg"), TEXT("png"), TEXT("webp") };
         for (const FString& Ext : Extensions)
         {
-            FString FileName = FilePrefix + TEXT("_01.") + Ext;
+            FString FileName = FilePrefix + TEXT(".") + Ext;
             FString FullPath = FPaths::Combine(SubDirPath, FileName);
             if (FPaths::FileExists(FullPath))
             {
@@ -695,10 +695,10 @@ bool UCharacterImageSubsystem::TryLoadFlipbookTextures(const FString& CharacterI
         }
     };
 
-    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_detail_anchor"), TEXT("neutral"));
-    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_happy"), TEXT("happy"));
-    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_angry"), TEXT("angry"));
-    TryLoadExpression(TEXT("detail"), CharacterId + TEXT("_sad"), TEXT("sad"));
+    TryLoadExpression(TEXT("detail"), TEXT("detail_anchor"), TEXT("neutral"));
+    TryLoadExpression(TEXT("detail"), TEXT("happy"), TEXT("happy"));
+    TryLoadExpression(TEXT("detail"), TEXT("angry"), TEXT("angry"));
+    TryLoadExpression(TEXT("detail"), TEXT("sad"), TEXT("sad"));
 
     return bAnyLoaded;
 }

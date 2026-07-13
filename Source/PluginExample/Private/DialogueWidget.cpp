@@ -634,11 +634,27 @@ void UDialogueWidget::SetNPCPortrait(UTexture2D* InTexture)
 
     if (InTexture)
     {
-        FSlateBrush Brush;
-        Brush.SetResourceObject(InTexture);
-        Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
-        Brush.DrawAs = ESlateBrushDrawType::Image;
-        NPCPortraitImage->SetBrush(Brush);
+        if (WhiteBgTransparentMaterial)
+        {
+            UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(WhiteBgTransparentMaterial, this);
+            if (MID)
+            {
+                MID->SetTextureParameterValue(TEXT("SpriteTexture"), InTexture);
+                FSlateBrush Brush;
+                Brush.SetResourceObject(MID);
+                Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
+                Brush.DrawAs = ESlateBrushDrawType::Image;
+                NPCPortraitImage->SetBrush(Brush);
+            }
+        }
+        else
+        {
+            FSlateBrush Brush;
+            Brush.SetResourceObject(InTexture);
+            Brush.ImageSize = FVector2D(InTexture->GetSizeX(), InTexture->GetSizeY());
+            Brush.DrawAs = ESlateBrushDrawType::Image;
+            NPCPortraitImage->SetBrush(Brush);
+        }
         NPCPortraitImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
     }
     else
