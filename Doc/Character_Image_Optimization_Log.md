@@ -98,6 +98,8 @@
 - 在 `UCharacterImageSubsystem` 中新增 `HandleImageSetProgress()`，允许在总流程完成前先把已成功的细节图/像素图应用到角色与 UI
 - 在异步动作层加入“主角优先释放 NPC 队列”的调度雏形，目标是先让 `Player` 跑到 `PixelAnchor`
 - 在异步动作回调侧加入步骤去重，避免同一步骤被晚到的失败回调二次污染
+- 将 `Res/Detail.png` 接入 `AdditionalReferences`，让细节图生成真正获得风格参考输入
+- 将细节图默认风格从“写实插画”调整为更风格化的 2D 游戏立绘，并在负面提示词中加强去照片感、去 3D 渲染约束
 
 ## 5. 建议的下一步验证
 

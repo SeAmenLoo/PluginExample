@@ -25,6 +25,25 @@ namespace
         }
         return FImageUtils::ImportFileAsTexture2D(FilePath);
     }
+
+    FString GetStyleReferenceImagePath(const FString& FileName)
+    {
+        FString SavedResDir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Res"));
+        FString SavedPath = FPaths::Combine(SavedResDir, FileName);
+        if (FPaths::FileExists(SavedPath))
+        {
+            return SavedPath;
+        }
+
+        FString ProjectResDir = FPaths::Combine(FPaths::ProjectDir(), TEXT("Res"));
+        FString ProjectPath = FPaths::Combine(ProjectResDir, FileName);
+        if (FPaths::FileExists(ProjectPath))
+        {
+            return ProjectPath;
+        }
+
+        return FString();
+    }
 }
 
 void UCharacterImageSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -238,10 +257,16 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
     Request.SaveDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CharacterImages"), Data.NPCId);
 
     // Set style reference images for consistent art style
-    FString ProjectDir = FPaths::ProjectDir();
+    FString DetailRefPath = GetStyleReferenceImagePath(TEXT("Detail.png"));
+    if (!DetailRefPath.IsEmpty())
+    {
+        FAIImageReference DetailRef;
+        DetailRef.LocalFilePath = DetailRefPath;
+        Request.AdditionalReferences.Add(DetailRef);
+    }
 
-    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
-    if (FPaths::FileExists(PixelRefPath))
+    FString PixelRefPath = GetStyleReferenceImagePath(TEXT("Pixel.png"));
+    if (!PixelRefPath.IsEmpty())
     {
         FAIImageReference PixelRef;
         PixelRef.LocalFilePath = PixelRefPath;
@@ -249,8 +274,8 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
     }
     else
     {
-        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
-        if (FPaths::FileExists(PixelRefPath))
+        PixelRefPath = GetStyleReferenceImagePath(TEXT("D_Pixel.png"));
+        if (!PixelRefPath.IsEmpty())
         {
             FAIImageReference PixelRef;
             PixelRef.LocalFilePath = PixelRefPath;
@@ -298,10 +323,16 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     Request.SaveDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CharacterImages"), PlayerCharacter->GetPlayerImageId());
 
     // Set style reference images for consistent art style
-    FString ProjectDir = FPaths::ProjectDir();
+    FString DetailRefPath = GetStyleReferenceImagePath(TEXT("Detail.png"));
+    if (!DetailRefPath.IsEmpty())
+    {
+        FAIImageReference DetailRef;
+        DetailRef.LocalFilePath = DetailRefPath;
+        Request.AdditionalReferences.Add(DetailRef);
+    }
 
-    FString PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("Pixel.png"));
-    if (FPaths::FileExists(PixelRefPath))
+    FString PixelRefPath = GetStyleReferenceImagePath(TEXT("Pixel.png"));
+    if (!PixelRefPath.IsEmpty())
     {
         FAIImageReference PixelRef;
         PixelRef.LocalFilePath = PixelRefPath;
@@ -309,8 +340,8 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     }
     else
     {
-        PixelRefPath = FPaths::Combine(ProjectDir, TEXT("Res"), TEXT("D_Pixel.png"));
-        if (FPaths::FileExists(PixelRefPath))
+        PixelRefPath = GetStyleReferenceImagePath(TEXT("D_Pixel.png"));
+        if (!PixelRefPath.IsEmpty())
         {
             FAIImageReference PixelRef;
             PixelRef.LocalFilePath = PixelRefPath;
