@@ -44,6 +44,27 @@ namespace
 
         return FString();
     }
+
+    FString GetDetailStyleReferenceImagePath()
+    {
+        const TArray<FString> CandidateNames = {
+            TEXT("DetailStyle.png"),
+            TEXT("Detail_Style.png"),
+            TEXT("DetailStyle.jpg"),
+            TEXT("Detail_Style.jpg")
+        };
+
+        for (const FString& CandidateName : CandidateNames)
+        {
+            const FString Path = GetStyleReferenceImagePath(CandidateName);
+            if (!Path.IsEmpty())
+            {
+                return Path;
+            }
+        }
+
+        return FString();
+    }
 }
 
 void UCharacterImageSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -257,7 +278,9 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForNPC(
     Request.SaveDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CharacterImages"), Data.NPCId);
 
     // Set style reference images for consistent art style
-    FString DetailRefPath = GetStyleReferenceImagePath(TEXT("Detail.png"));
+    // Only use a dedicated style-only reference for detail art direction.
+    // Avoid feeding a full character portrait like Detail.png here because it leaks identity and framing.
+    FString DetailRefPath = GetDetailStyleReferenceImagePath();
     if (!DetailRefPath.IsEmpty())
     {
         FAIImageReference DetailRef;
@@ -323,7 +346,9 @@ FAICharacterGenerationRequest UCharacterImageSubsystem::BuildImageRequestForPlay
     Request.SaveDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("CharacterImages"), PlayerCharacter->GetPlayerImageId());
 
     // Set style reference images for consistent art style
-    FString DetailRefPath = GetStyleReferenceImagePath(TEXT("Detail.png"));
+    // Only use a dedicated style-only reference for detail art direction.
+    // Avoid feeding a full character portrait like Detail.png here because it leaks identity and framing.
+    FString DetailRefPath = GetDetailStyleReferenceImagePath();
     if (!DetailRefPath.IsEmpty())
     {
         FAIImageReference DetailRef;

@@ -1,89 +1,94 @@
-LogTemp: [Cache] bEnableCache: 1, CacheSubsystem: 0000023EE65FA6B0, IsReplayMode: 0
-LogTemp: [Cache] Request hash: dc7fc920
+LogTemp: [Cache] bEnableCache: 1, CacheSubsystem: 0000015D1CC40770, IsReplayMode: 0
+LogTemp: [Cache] Request hash: 2247b19d
 LogPluginLLM: >>> LLM REQUEST [WorldGen]
 LogPluginLLM:   Model: (default) | Temp: 0.70 | MaxTokens: 4096 | ForceJSON: true
 LogPluginLLM:   Messages: 2
 LogPluginLLM:   Summary:
     [0] system: 你是一个RPG游戏世界观设计师。根据玩家的描述生成初始世界配置。\n\n【重要】输出语言必须与玩家输入的世界描述语言一致。判断语言时，以 "details:" 之后玩家实际填写的内容为准，不要以提示词中的... (1267 chars)
-    [1] user: Create a Medieval Fantasy style world with the following details: 迷宫 (68 chars)
-LogStreaming: Display: FlushAsyncLoading(608): 1 QueuedPackages, 0 AsyncPackages
+    [1] user: Create a 中世纪奇幻 style world with the following details: 迷宫 (57 chars)
+LogStreaming: Display: FlushAsyncLoading(369): 1 QueuedPackages, 0 AsyncPackages
 LogLLMRuntime: Sending streaming chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=120.0s, model=doubao-seed-2-0-mini-260428)
-PIE: UWidget::RemoveFromParent() called on '/Engine/Transient.UnrealEdEngine_0:BP_PluginGameInstance_C_0.WB_WorldSetup_C_1' which has no UMG parent (if it was added directly to a native Slate widget via TakeWidget() then it must be removed explicitly rather than via RemoveFromParent())
-LogTemp: Initial chunk parsed from stream, spawning early: 迷宫入口前厅 (907 chars received so far)
+PIE: UWidget::RemoveFromParent()在没有UMG父项的 '/Engine/Transient.UnrealEdEngine_0:BP_PluginGameInstance_C_0.WB_WorldSetup_C_1’ 上被调用（如果其通过TakeWidget()直接添加到本地Slate控件，则其必须被显式移除，而不能通过RemoveFromParent()移除）
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Initial chunk parsed from stream, spawning early: 迷雾起始迷宫 (1091 chars received so far)
 LogMaterial: Warning: Material /Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial missing usage flag SkeletalMesh! Default Material will be used in game.
 LogMaterial: Warning:      The material will recompile every editor launch until resaved.
 LogSkeletalMesh: Warning: Material with missing usage flag was applied to skeletal mesh /Engine/EngineMeshes/SkeletalCube.SkeletalCube
 LogTemp: [CharacterImageSubsystem] Starting image generation for character npc_0
-LogStreaming: Display: FlushAsyncLoading(609): 1 QueuedPackages, 0 AsyncPackages
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:22] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 609
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:22] Prompt - === BEGIN PROMPT ===
-根据角色描述创作一个全新的游戏角色细节锚点图，用于游戏对话立绘。必须基于文字描述原创设计角色，不得照抄参考图中的具体人物。
-【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
-【参考图使用规则】
-如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图和角色身份。
-【目标输出】
-高细节角色设定稿，干净背景，写实插画风格。角色细节图固定为半身近景角色设定图，用于后续表情派生。
-【构图与镜头】
-细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。角色居中，头部朝向画面右侧，身体为右向三分之四视角，取景范围从头顶到腰部上方，完整显示头部、肩部和上半身，不裁切脸部，不允许全身，不允许远景。
-【背景与画面】
-纯白或透明干净背景，单人单视图，无道具墙，无设定板，无文字，无边框。
-【身份一致性】
-必须锁定同一角色的发型、脸型、五官关系、服装结构、主配色和标志性配件。允许原创细化材质和细节，但不得改变角色身份。
-【硬性约束】
-必须只有一个角色。禁止正面直视镜头，禁止背面，禁止左向，禁止全身，禁止多人，禁止拼贴，禁止分镜，禁止多视角，禁止角色设定板。
-=== END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:22] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 950 (0.9 KB, 0.00 MB)
-LogPluginLLM: <<< LLM RESPONSE [WorldGen] - OK (10.30s)
+LogTemp: [AIImage] Loading provider config from: E:/Projects/UE/VRGame/git/PluginExample/Saved/Provider/IMGProvider.json
+LogPluginLLM: <<< LLM RESPONSE [WorldGen] - OK (7.53s)
 LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
-LogPluginLLM:   Content (1389 chars):
+LogPluginLLM:   Content (1579 chars):
 {
     "world_id": "medieval_fantasy_maze_001",
     "initial_chunk": {
         "chunk_id": "chunk_001",
-        "name": "迷宫入口前厅",
-        "description": "潮湿昏暗的石质前厅，三面都是布满青苔的厚重石壁，中央立着一块刻有神秘符文的石碑，前方是两条分叉的石质甬道，空气中弥漫着淡淡的霉味与古老的魔法气息。",
+        "name": "迷雾起始迷宫",
+        "description": "被灰白色迷雾笼罩的石砌迷宫入口，墙面爬满暗绿色苔藓，地面散落着磨损的石砖，空气中弥漫着潮湿的霉味与淡淡的魔法气息，前方的通道在迷雾中若隐若现。",
         "type": "Dungeon",
-        "tags": ["迷宫", "古老魔法", "石质结构"],
+        "tags": ["迷宫", "中世纪", "魔法", "迷雾"],
         "npcs": [
             {
-                "name": "守碑人",
-                "description": "穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路",
-                "personality": "沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告",
-        ...
+                "name": "守路者托伦",
+                "description": "身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。",
+                "personality": "沉默寡言，警惕性极高，只对能通过迷宫试炼的...
 LogTemp: [LLMCache] Added new cache entry. Total entries: 1
 LogTemp: Initial chunk chunk_001 already spawned by stream, updating data only
 LogTemp: World generation complete!
 LogTemp: [CharacterImageSubsystem] Starting image generation for character Player
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:26] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 645
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:26] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImage] Loading provider config from: E:/Projects/UE/VRGame/git/PluginExample/Saved/Provider/IMGProvider.json
+LogTemp: [AIImageGenerator] [2026-07-16 21:32:57] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 962
+LogTemp: [AIImageGenerator] [2026-07-16 21:32:57] Prompt - === BEGIN PROMPT ===
 根据角色描述创作一个全新的游戏角色细节锚点图，用于游戏对话立绘。必须基于文字描述原创设计角色，不得照抄参考图中的具体人物。
 【角色身份】
-职业：Adventurer。性格与外貌描述：性别不限，年龄20岁左右，人类男性/女性，留着利落的短发，穿着粗糙的皮革冒险者外套，腰间别着一把生锈的短刀与一个装有火把的皮质囊袋，左手腕有一道淡淡的旧伤疤， courageous hero。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【参考图使用规则】
-如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图和角色身份。
+如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、色彩概括方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图、角色身份与具体五官关系。参考图只能借风格，不能借人物本人。
 【目标输出】
-高细节角色设定稿，干净背景，写实插画风格。角色细节图固定为半身近景角色设定图，用于后续表情派生。
+高细节角色设定稿，干净背景，风格化2D游戏角色立绘，厚涂与水彩融合的插画质感，保留清晰线稿边缘，弱化照片级皮肤纹理与3D渲染感。角色细节图固定为半身近景角色设定图，用于后续表情派生。
+【风格强化】
+优先贴近参考图的插画语言、笔触节奏、边缘处理、色彩概括方式和整体美术气质。画面应更风格化而不是更写实，保持2D游戏立绘感，允许适度夸张的形体概括与笔触表现，避免照片级皮肤细节、真实摄影布光和3D渲染质感。即使提供参考图，也必须重建设计一个新角色，不能生成参考图中的那个人。
 【构图与镜头】
-细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。角色居中，头部朝向画面右侧，身体为右向三分之四视角，取景范围从头顶到腰部上方，完整显示头部、肩部和上半身，不裁切脸部，不允许全身，不允许远景。
+细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。角色居中，头部朝向画面右侧，身体为右向三分之四视角，取景范围必须从头顶到腰部上方，完整显示头部、肩部和上半身，不裁切脸部。禁止出现膝盖以下，禁止完整双腿，禁止完整站姿，禁止全身，禁止远景。
 【背景与画面】
 纯白或透明干净背景，单人单视图，无道具墙，无设定板，无文字，无边框。
 【身份一致性】
 必须锁定同一角色的发型、脸型、五官关系、服装结构、主配色和标志性配件。允许原创细化材质和细节，但不得改变角色身份。
 【硬性约束】
-必须只有一个角色。禁止正面直视镜头，禁止背面，禁止左向，禁止全身，禁止多人，禁止拼贴，禁止分镜，禁止多视角，禁止角色设定板。
+必须只有一个角色。禁止正面直视镜头，禁止背面，禁止左向，禁止全身，禁止多人，禁止拼贴，禁止分镜，禁止多视角，禁止角色设定板。禁止照片感、禁止电影级写实、禁止超写实皮肤、禁止3D渲染效果。禁止参考角色同款脸、禁止参考角色同款发型、禁止参考角色同款服装、禁止参考角色同款构图。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:26] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 986 (1.0 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:32:57] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1420 (1.4 KB, 0.00 MB)
 LogViewport: Display: Viewport MouseLockMode Changed, DoNotLock -> LockOnCapture
 LogViewport: Display: Viewport MouseCaptureMode Changed, NoCapture -> CapturePermanently
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:32] GenerateHttpImage - Success! Generated 1 images
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:32] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 606
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:32] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:09] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:10] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 942
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:10] Prompt - === BEGIN PROMPT ===
+根据角色描述创作一个全新的游戏角色细节锚点图，用于游戏对话立绘。必须基于文字描述原创设计角色，不得照抄参考图中的具体人物。
+【角色身份】
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
+【参考图使用规则】
+如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、色彩概括方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图、角色身份与具体五官关系。参考图只能借风格，不能借人物本人。
+【目标输出】
+高细节角色设定稿，干净背景，风格化2D游戏角色立绘，厚涂与水彩融合的插画质感，保留清晰线稿边缘，弱化照片级皮肤纹理与3D渲染感。角色细节图固定为半身近景角色设定图，用于后续表情派生。
+【风格强化】
+优先贴近参考图的插画语言、笔触节奏、边缘处理、色彩概括方式和整体美术气质。画面应更风格化而不是更写实，保持2D游戏立绘感，允许适度夸张的形体概括与笔触表现，避免照片级皮肤细节、真实摄影布光和3D渲染质感。即使提供参考图，也必须重建设计一个新角色，不能生成参考图中的那个人。
+【构图与镜头】
+细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。角色居中，头部朝向画面右侧，身体为右向三分之四视角，取景范围必须从头顶到腰部上方，完整显示头部、肩部和上半身，不裁切脸部。禁止出现膝盖以下，禁止完整双腿，禁止完整站姿，禁止全身，禁止远景。
+【背景与画面】
+纯白或透明干净背景，单人单视图，无道具墙，无设定板，无文字，无边框。
+【身份一致性】
+必须锁定同一角色的发型、脸型、五官关系、服装结构、主配色和标志性配件。允许原创细化材质和细节，但不得改变角色身份。
+【硬性约束】
+必须只有一个角色。禁止正面直视镜头，禁止背面，禁止左向，禁止全身，禁止多人，禁止拼贴，禁止分镜，禁止多视角，禁止角色设定板。禁止照片感、禁止电影级写实、禁止超写实皮肤、禁止3D渲染效果。禁止参考角色同款脸、禁止参考角色同款发型、禁止参考角色同款服装、禁止参考角色同款构图。
+=== END PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:10] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1400 (1.4 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:10] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 674
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:10] Prompt - === BEGIN PROMPT ===
 将同一角色转换为统一规格的像素锚点图。参考图用于锁定同一角色身份，目标是输出后续行走差分可复用的像素站立底图。
 【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【参考图使用规则】
-如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图和角色身份。
+如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、色彩概括方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图、角色身份与具体五官关系。参考图只能借风格，不能借人物本人。
 【像素风规格】
 16bit经典JRPG像素风，三头身Q版，清晰像素块，边缘硬朗，无抗锯齿。角色像素图固定为三头身全身站立图，像素块清晰，边缘硬朗，无抗锯齿，经典JRPG像素艺术风格。
 【姿势与朝向】
@@ -93,19 +98,16 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:39:32] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止正面、背面、左向、多人、拼接、分镜、角色设定板、正侧背三视图、sprite sheet、头像框、复杂背景。绝对只能输出一个角色的一张独立全身像素图。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:32] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25075 (24.5 KB, 0.02 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:38] GenerateHttpImage - Success! Generated 1 images
-LogSlate: Display: Synchronously lazy loading font file '../../../Engine/Content/Editor/Slate/Fonts/NotoColorEmoji.ttf' with subface index 0 in Game thread.
-LogSlate: Display: Took 0.014109 seconds to synchronously load lazily loaded font '../../../Engine/Content/Editor/Slate/Fonts/NotoColorEmoji.ttf' (7610K) on Game thread.
-LogSlate: Display: Freetype font face in memory successfully created with synchronously loaded raw font file '../../../Engine/Content/Editor/Slate/Fonts/NotoColorEmoji.ttf' subface 0 in Game thread.
-LogSlate: Display: Font face '../../../Engine/Content/Editor/Slate/Fonts/NotoColorEmoji.ttf' subface index 0 successfully added to font face map in Game thread.
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:38] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 642
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:38] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:10] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25257 (24.7 KB, 0.02 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:21] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:21] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 654
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:21] Prompt - === BEGIN PROMPT ===
 将同一角色转换为统一规格的像素锚点图。参考图用于锁定同一角色身份，目标是输出后续行走差分可复用的像素站立底图。
 【角色身份】
-职业：Adventurer。性格与外貌描述：性别不限，年龄20岁左右，人类男性/女性，留着利落的短发，穿着粗糙的皮革冒险者外套，腰间别着一把生锈的短刀与一个装有火把的皮质囊袋，左手腕有一道淡淡的旧伤疤， courageous hero。
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
 【参考图使用规则】
-如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图和角色身份。
+如提供参考图，参考图只用于提取绘画媒介、线条质感、上色方式、色彩概括方式、像素颗粒与整体美术风格。严禁复制参考图中的人物脸型、发型轮廓、服装剪影、武器造型、姿势、镜头距离、构图、角色身份与具体五官关系。参考图只能借风格，不能借人物本人。
 【像素风规格】
 16bit经典JRPG像素风，三头身Q版，清晰像素块，边缘硬朗，无抗锯齿。角色像素图固定为三头身全身站立图，像素块清晰，边缘硬朗，无抗锯齿，经典JRPG像素艺术风格。
 【姿势与朝向】
@@ -115,13 +117,28 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:39:38] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止正面、背面、左向、多人、拼接、分镜、角色设定板、正侧背三视图、sprite sheet、头像框、复杂背景。绝对只能输出一个角色的一张独立全身像素图。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:38] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25111 (24.5 KB, 0.02 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:59] GenerateHttpImage - Success! Generated 1 images
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:59] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 426
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:59] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:21] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25237 (24.6 KB, 0.02 MB)
+LogTemp: Error: [AIImageGenerator] [2026-07-16 21:33:40] GenerateHttpImage - ERROR: HTTP request failed with status 2 (Failed), URL: https://ark.cn-beijing.volces.com/api/v3/images/generations
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:40] Retry - Retrying request (attempt 1/2) for Failed, delay: 3.0s
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:43] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25257 (24.7 KB, 0.02 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Error: [AIImageGenerator] [2026-07-16 21:33:51] GenerateHttpImage - ERROR: HTTP request failed with status 2 (Failed), URL: https://ark.cn-beijing.volces.com/api/v3/images/generations
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:51] Retry - Retrying request (attempt 1/2) for Failed, delay: 3.0s
+LogTemp: [AIImageGenerator] [2026-07-16 21:33:54] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25237 (24.6 KB, 0.02 MB)
+LogDerivedDataCache: C:/Users/li/AppData/Local/UnrealEngine/Common/DerivedDataCache: Maintenance finished in +00:00:50.668 and deleted 0 files with total size 0 MiB and 0 empty folders. Scanned 26560 files in 28008 folders with total size 1014 MiB.
+LogTemp: Error: [AIImageGenerator] [2026-07-16 21:34:13] GenerateHttpImage - ERROR: HTTP request failed with status 2 (Failed), URL: https://ark.cn-beijing.volces.com/api/v3/images/generations
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:13] Retry - Retrying request (attempt 2/2) for Failed, delay: 6.0s
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:19] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25257 (24.7 KB, 0.02 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Error: [AIImageGenerator] [2026-07-16 21:34:25] GenerateHttpImage - ERROR: HTTP request failed with status 2 (Failed), URL: https://ark.cn-beijing.volces.com/api/v3/images/generations
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:25] Retry - Retrying request (attempt 2/2) for Failed, delay: 6.0s
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:31] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25237 (24.6 KB, 0.02 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:45] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:45] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 463
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:45] Prompt - === BEGIN PROMPT ===
 基于像素锚点图生成同一角色的像素行走差分图：左脚向前。
 【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【像素风规格】
 16bit经典JRPG像素风，三头身Q版，清晰像素块，边缘硬朗，无抗锯齿。细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。像素块清晰，边缘硬朗，无抗锯齿。
 【变化范围】
@@ -131,15 +148,14 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:39:59] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止多人，禁止背景，禁止角色设定板，禁止正侧背多视图，禁止新增配件，禁止服装变化，禁止发型变化，禁止切换朝向，绝对只能输出一个角色的一张像素行走差分图。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:39:59] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1226 (1.2 KB, 0.00 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:08] Retry - Retrying request (attempt 1/2) for Failed, delay: 3.0s
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:11] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25111 (24.5 KB, 0.02 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:13] GenerateHttpImage - Success! Generated 1 images
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:13] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 426
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:13] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:34:45] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1377 (1.3 KB, 0.00 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 463
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] Prompt - === BEGIN PROMPT ===
 基于像素锚点图生成同一角色的像素行走差分图：右脚向前。
 【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【像素风规格】
 16bit经典JRPG像素风，三头身Q版，清晰像素块，边缘硬朗，无抗锯齿。细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。像素块清晰，边缘硬朗，无抗锯齿。
 【变化范围】
@@ -149,16 +165,45 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:40:13] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止多人，禁止背景，禁止角色设定板，禁止正侧背多视图，禁止新增配件，禁止服装变化，禁止发型变化，禁止切换朝向，绝对只能输出一个角色的一张像素行走差分图。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:13] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1226 (1.2 KB, 0.00 MB)
-LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 6205.879883
-LogEOSSDK: LogEOS: SDK Config Product Update Request Completed - No Change
-LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 6206.448242, Update Interval: 348.509766
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:27] GenerateHttpImage - Success! Generated 1 images
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:27] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 347
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:27] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1377 (1.3 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 443
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] Prompt - === BEGIN PROMPT ===
+基于像素锚点图生成同一角色的像素行走差分图：左脚向前。
+【角色身份】
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
+【像素风规格】
+16bit经典JRPG像素风，三头身Q版，清晰像素块，边缘硬朗，无抗锯齿。细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。像素块清晰，边缘硬朗，无抗锯齿。
+【变化范围】
+只允许修改腿部迈步状态和对应的轻微手臂摆动，保持头部朝向、身体朝向、头身比、服装、发型、配色和像素风格完全一致。
+【姿势锁定】
+角色整体继续朝向画面右侧，单人单视图，全身完整显示，不允许跳跃，不允许夸张摆臂，不允许镜头变化。
+【硬性约束】
+禁止多人，禁止背景，禁止角色设定板，禁止正侧背多视图，禁止新增配件，禁止服装变化，禁止发型变化，禁止切换朝向，绝对只能输出一个角色的一张像素行走差分图。
+=== END PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:00] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1357 (1.3 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 443
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] Prompt - === BEGIN PROMPT ===
+基于像素锚点图生成同一角色的像素行走差分图：右脚向前。
+【角色身份】
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
+【像素风规格】
+16bit经典JRPG像素风，三头身Q版，清晰像素块，边缘硬朗，无抗锯齿。细节图固定为头部朝右的半身近景立绘，像素图固定为整体朝右的三头身全身单视图。像素块清晰，边缘硬朗，无抗锯齿。
+【变化范围】
+只允许修改腿部迈步状态和对应的轻微手臂摆动，保持头部朝向、身体朝向、头身比、服装、发型、配色和像素风格完全一致。
+【姿势锁定】
+角色整体继续朝向画面右侧，单人单视图，全身完整显示，不允许跳跃，不允许夸张摆臂，不允许镜头变化。
+【硬性约束】
+禁止多人，禁止背景，禁止角色设定板，禁止正侧背多视图，禁止新增配件，禁止服装变化，禁止发型变化，禁止切换朝向，绝对只能输出一个角色的一张像素行走差分图。
+=== END PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1357 (1.3 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 384
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] Prompt - === BEGIN PROMPT ===
 基于细节锚点图生成同一角色的喜悦表情版本。
 【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【变化范围】
 只允许修改面部表情，包括眉毛、眼睛、嘴角和嘴型的细微变化。角色位置、头部朝向、身体朝向、镜头角度、取景范围、画面比例、服装、发型、配色、背景和光照全部保持不变。
 【构图锁定】
@@ -166,15 +211,28 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:40:27] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止新增人物，禁止改变构图，禁止改变裁切，禁止改变姿势，禁止改变服装结构，禁止改变发型轮廓，禁止改变主配色，禁止镜头移动，禁止背景变化，只有表情可以变化。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:27] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1137 (1.1 KB, 0.00 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:41] Retry - Retrying request (attempt 2/2) for Failed, delay: 6.0s
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:47] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 25111 (24.5 KB, 0.02 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:47] GenerateHttpImage - Success! Generated 1 images
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:47] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 347
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:47] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:14] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1288 (1.3 KB, 0.00 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:30] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 364
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] Prompt - === BEGIN PROMPT ===
+基于细节锚点图生成同一角色的喜悦表情版本。
+【角色身份】
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
+【变化范围】
+只允许修改面部表情，包括眉毛、眼睛、嘴角和嘴型的细微变化。角色位置、头部朝向、身体朝向、镜头角度、取景范围、画面比例、服装、发型、配色、背景和光照全部保持不变。
+【构图锁定】
+必须与细节锚点图保持同一张半身近景立绘规格：头部朝向画面右侧，右向三分之四视角，从头顶到腰部上方取景。
+【硬性约束】
+禁止新增人物，禁止改变构图，禁止改变裁切，禁止改变姿势，禁止改变服装结构，禁止改变发型轮廓，禁止改变主配色，禁止镜头移动，禁止背景变化，只有表情可以变化。
+=== END PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1268 (1.2 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 384
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] Prompt - === BEGIN PROMPT ===
 基于细节锚点图生成同一角色的愤怒表情版本。
 【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【变化范围】
 只允许修改面部表情，包括眉毛、眼睛、嘴角和嘴型的细微变化。角色位置、头部朝向、身体朝向、镜头角度、取景范围、画面比例、服装、发型、配色、背景和光照全部保持不变。
 【构图锁定】
@@ -182,14 +240,13 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:40:47] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止新增人物，禁止改变构图，禁止改变裁切，禁止改变姿势，禁止改变服装结构，禁止改变发型轮廓，禁止改变主配色，禁止镜头移动，禁止背景变化，只有表情可以变化。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:40:47] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1137 (1.1 KB, 0.00 MB)
-Cmd: DebugManager.CycleToPreviousColumn
-LogTemp: [AIImageGenerator] [2026-07-09 18:41:03] GenerateHttpImage - Success! Generated 1 images
-LogTemp: [AIImageGenerator] [2026-07-09 18:41:03] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 347
-LogTemp: [AIImageGenerator] [2026-07-09 18:41:03] Prompt - === BEGIN PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:31] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1288 (1.3 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:47] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:48] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 384
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:48] Prompt - === BEGIN PROMPT ===
 基于细节锚点图生成同一角色的哀伤表情版本。
 【角色身份】
-职业：迷宫守护者。性格与外貌描述：穿着磨损的灰布长袍的老者，面容布满皱纹，眼睛闪烁着微弱的蓝光，双手布满魔法纹路。沉默寡言，警惕性强，只对进入迷宫的冒险者发出警告。
+职业：Adventurer。性格与外貌描述：性别不限，年龄约20岁，人类种族，留着利落的深棕色短发，身穿粗糙的亚麻束腰外衣，腰间系着旧皮袋，右手佩戴一枚边缘磨损的铜制护身符，脸上带着对未知的警惕与好奇。， courageous hero。
 【变化范围】
 只允许修改面部表情，包括眉毛、眼睛、嘴角和嘴型的细微变化。角色位置、头部朝向、身体朝向、镜头角度、取景范围、画面比例、服装、发型、配色、背景和光照全部保持不变。
 【构图锁定】
@@ -197,13 +254,85 @@ LogTemp: [AIImageGenerator] [2026-07-09 18:41:03] Prompt - === BEGIN PROMPT ===
 【硬性约束】
 禁止新增人物，禁止改变构图，禁止改变裁切，禁止改变姿势，禁止改变服装结构，禁止改变发型轮廓，禁止改变主配色，禁止镜头移动，禁止背景变化，只有表情可以变化。
 === END PROMPT ===
-LogTemp: [AIImageGenerator] [2026-07-09 18:41:03] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1137 (1.1 KB, 0.00 MB)
-LogTemp: [AIImageGenerator] [2026-07-09 18:41:17] GenerateHttpImage - Success! Generated 1 images
-LogTemp: Error: [AIImageGenerator] [2026-07-09 18:41:18] GenerateHttpImage - ERROR: HTTP request failed with status 2 (Failed)
-LogTemp: Warning: [AICharacterImageSet] PixelAnchor generation failed: HTTP request failed with status 2 (Failed)
-LogTemp: Warning: [CharacterImageSubsystem] Partial image generation for character Player. Failed steps: PixelAnchor, WalkLeft, WalkRight, Happy, Angry, Sad
-LogTemp: Error: [CharacterImageSubsystem] Image generation failed for character Player: PixelAnchor: HTTP request failed with status 2 (Failed) | WalkLeft: Skipped because PixelAnchor failed | WalkRight: Skipped because PixelAnchor failed | Happy: Skipped because PixelAnchor failed | Angry: Skipped because PixelAnchor failed | Sad: Skipped because PixelAnchor failed
-Cmd: DebugManager.CycleToPreviousColumn
-LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 6590.137207
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:48] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1288 (1.3 KB, 0.00 MB)
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:49] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:50] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 364
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:50] Prompt - === BEGIN PROMPT ===
+基于细节锚点图生成同一角色的愤怒表情版本。
+【角色身份】
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
+【变化范围】
+只允许修改面部表情，包括眉毛、眼睛、嘴角和嘴型的细微变化。角色位置、头部朝向、身体朝向、镜头角度、取景范围、画面比例、服装、发型、配色、背景和光照全部保持不变。
+【构图锁定】
+必须与细节锚点图保持同一张半身近景立绘规格：头部朝向画面右侧，右向三分之四视角，从头顶到腰部上方取景。
+【硬性约束】
+禁止新增人物，禁止改变构图，禁止改变裁切，禁止改变姿势，禁止改变服装结构，禁止改变发型轮廓，禁止改变主配色，禁止镜头移动，禁止背景变化，只有表情可以变化。
+=== END PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:35:50] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1268 (1.2 KB, 0.00 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: [AIImageGenerator] [2026-07-16 21:36:08] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:36:09] GenerateHttpImage - Success! Generated 1 images
+LogTemp: [AIImageGenerator] [2026-07-16 21:36:09] GenerateHttpImage - Starting HTTP request to https://ark.cn-beijing.volces.com/api/v3/images/generations, prompt length: 364
+LogTemp: [AIImageGenerator] [2026-07-16 21:36:09] Prompt - === BEGIN PROMPT ===
+基于细节锚点图生成同一角色的哀伤表情版本。
+【角色身份】
+职业：迷宫守护者。性格与外貌描述：身着褪色的皮甲，腰间挂着生锈的短剑，脸上布满与苔藓颜色相近的暗绿色斑纹，是迷宫中徘徊的幽灵般的存在。。沉默寡言，警惕性极高，只对能通过迷宫试炼的人展现微弱的善意。。
+【变化范围】
+只允许修改面部表情，包括眉毛、眼睛、嘴角和嘴型的细微变化。角色位置、头部朝向、身体朝向、镜头角度、取景范围、画面比例、服装、发型、配色、背景和光照全部保持不变。
+【构图锁定】
+必须与细节锚点图保持同一张半身近景立绘规格：头部朝向画面右侧，右向三分之四视角，从头顶到腰部上方取景。
+【硬性约束】
+禁止新增人物，禁止改变构图，禁止改变裁切，禁止改变姿势，禁止改变服装结构，禁止改变发型轮廓，禁止改变主配色，禁止镜头移动，禁止背景变化，只有表情可以变化。
+=== END PROMPT ===
+LogTemp: [AIImageGenerator] [2026-07-16 21:36:09] RequestBody - URL: https://ark.cn-beijing.volces.com/api/v3/images/generations, body length: 1268 (1.2 KB, 0.00 MB)
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: [AIImageGenerator] [2026-07-16 21:36:27] GenerateHttpImage - Success! Generated 1 images
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 328.078217
 LogEOSSDK: LogEOS: SDK Config Product Update Request Completed - No Change
-LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 6591.135254, Update Interval: 332.183594
+LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 328.363373, Update Interval: 344.825592
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogEOSSDK: LogEOS: Updating Product SDK Config, Time: 676.402710
+LogEOSSDK: LogEOS: SDK Config Product Update Request Completed - No Change
+LogEOSSDK: LogEOS: ScheduleNextSDKConfigDataUpdate - Time: 676.753906, Update Interval: 323.408905
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogHttp: Warning: HTTP request timed out after 3.00 seconds URL=https://www.google.com/generate_204
+LogTemp: Interacting with NPC: 守路者托伦
+LogViewport: Display: Viewport MouseLockMode Changed, LockOnCapture -> DoNotLock
+LogViewport: Display: Viewport MouseCaptureMode Changed, CapturePermanently -> CaptureDuringMouseDown
+LogPluginLLM: >>> LLM REQUEST [Dialogue] [npc=守路者托伦]
+LogPluginLLM:   Model: (default) | Temp: 0.80 | MaxTokens: 512 | ForceJSON: true
+LogPluginLLM:   Messages: 4
+LogPluginLLM:   Summary:
+    [0] system: 你是一个RPG游戏中的NPC角色。请代入角色，以角色的身份与玩家对话。\n\n【重要】回复语言必须与玩家的输入语言一致。玩家用中文，你就用中文回复；玩家用英文，你就用英文回复。\n\n必须使用JSON格式回复... (1394 chars)
+    [1] system: === GAME STATE ===\nWorld: 迷雾迷宫的咒缚\nEra: 中世纪魔法时代\nStory Theme: 在虚幻与现实的迷宫中寻找自我与救赎\nCurrent Location: 迷雾起始... (633 chars)
+    [2] assistant: ...闯入者...你...能...区分...幻象...吗？ (29 chars)
+    [3] system: 对话刚开始，请接续你刚才的问候，提供3-5个玩家可以选择的对话选项。使用JSON格式回复，response可以简短承接，重点在choices中提供选项。 (76 chars)
+LogLLMRuntime: Sending chat completion request to https://ark.cn-beijing.volces.com/api/v3/chat/completions (timeout=60.0s, model=doubao-seed-2-0-mini-260428)
+LogSlate: Last resort fallback font was requested. Font: '<unknown>', Character: '<unknown>'
+LogSlate: Display: Synchronously lazy loading font file '../../../Engine/Content/SlateDebug/Fonts/LastResort.ttf' with subface index 0 in Game thread.
+LogSlate: Display: Took 0.004561 seconds to synchronously load lazily loaded font '../../../Engine/Content/SlateDebug/Fonts/LastResort.ttf' (5269K) on Game thread.
+LogSlate: Display: Freetype font face in memory successfully created with synchronously loaded raw font file '../../../Engine/Content/SlateDebug/Fonts/LastResort.ttf' subface 0 in Game thread.
+LogSlate: Display: Font face '../../../Engine/Content/SlateDebug/Fonts/LastResort.ttf' subface index 0 successfully added to font face map in Game thread.
+LogPluginLLM: <<< LLM RESPONSE [Dialogue] [npc=守路者托伦] - OK (2.45s)
+LogPluginLLM:   HTTP: 200 | Tokens: 0 (0+0)
+LogPluginLLM:   Content (231 chars):
+{
+  "response_text": "迷雾裹住了所有的路，我得先确认你不是幻象，才能告诉你我的来意。",
+  "npc_expression": "neutral",
+  "player_expression": "neutral",
+  "choices": ["我能分清虚实，想找出口离开迷宫", "迷宫里的幻象太乱了，能给我指条明路吗", "我只是路过，想借个道", "我好像被困住了，能帮我吗"],
+  "choice_actions": {}
+}
