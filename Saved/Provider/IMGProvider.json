@@ -8,7 +8,7 @@
   "_image_generation_path_comment": "图片生成接口路径",
   "api_key": "YOUR_API_KEY_HERE",
   "_api_key_comment": "API 密钥，也可通过环境变量 AI_IMAGE_API_KEY 设置",
-  "model": "doubao-seedream-3-0-t2i-250415",
+  "model": "doubao-seedream-4-5-251128",
   "_model_comment": "图像模型名称",
   "default_timeout_seconds": 120.0,
   "_default_timeout_seconds_comment": "默认请求超时时间（秒）",
