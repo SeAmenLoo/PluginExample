@@ -7,6 +7,10 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 AGameChunkActor::AGameChunkActor()
 {
@@ -17,6 +21,9 @@ AGameChunkActor::AGameChunkActor()
     ChunkMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ChunkMesh"));
     ChunkMesh->SetupAttachment(RootComponent);
     ChunkMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    // Ground plane lies flat on the XY plane (Plane mesh default normal is +Z).
+    ChunkMesh->SetRelativeRotation(FRotator::ZeroRotator);
+    ChunkMesh->SetRelativeLocation(FVector::ZeroVector);
 
     ChunkNameLabel = CreateDefaultSubobject<UTextRenderComponent>(TEXT("ChunkName"));
     ChunkNameLabel->SetupAttachment(RootComponent);
@@ -39,6 +46,34 @@ AGameChunkActor::AGameChunkActor()
 void AGameChunkActor::BeginPlay()
 {
     Super::BeginPlay();
+
+    // Load ground plane mesh and scale it to cover the whole chunk.
+    // Engine BasicShapes/Plane is 100x100 units, so scale = ChunkSize / 100.
+    UStaticMesh* PlaneMesh = Cast<UStaticMesh>(GroundMeshAsset.TryLoad());
+    if (PlaneMesh)
+    {
+        ChunkMesh->SetStaticMesh(PlaneMesh);
+        const float PlaneScale = ChunkSize / 100.0f;
+        ChunkMesh->SetRelativeScale3D(FVector(PlaneScale, PlaneScale, 1.0f));
+        ChunkMesh->SetRelativeLocation(FVector::ZeroVector);
+        ChunkMesh->SetRelativeRotation(FRotator::ZeroRotator);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[GameChunkActor] Failed to load ground plane mesh from %s"), *GroundMeshAsset.ToString());
+    }
+
+    // Create dynamic material instance for runtime texture switching.
+    UMaterialInterface* BaseMat = Cast<UMaterialInterface>(GroundBaseMaterial.TryLoad());
+    if (BaseMat)
+    {
+        GroundMaterial = UMaterialInstanceDynamic::Create(BaseMat, this);
+        ChunkMesh->SetMaterial(0, GroundMaterial);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[GameChunkActor] Failed to load ground base material from %s"), *GroundBaseMaterial.ToString());
+    }
 
     RebuildExitPortals();
 }
@@ -300,6 +335,27 @@ FTransform AGameChunkActor::GetPlayerStartTransform() const
     }
 
     return GetActorTransform();
+}
+
+void AGameChunkActor::SetGroundTexture(UTexture2D* InTexture)
+{
+    CurrentGroundTexture = InTexture;
+    if (GroundMaterial)
+    {
+        GroundMaterial->SetTextureParameterValue(GroundTextureParameterName, InTexture);
+        if (InTexture)
+        {
+            // Enable seamless wrapping so the texture tiles cleanly across the ground plane.
+            InTexture->AddressX = TA_Wrap;
+            InTexture->AddressY = TA_Wrap;
+            InTexture->UpdateResource();
+            ChunkMesh->SetVisibility(true);
+        }
+        else
+        {
+            ChunkMesh->SetVisibility(false);
+        }
+    }
 }
 
 void AGameChunkActor::HandlePortalEntered(APortalActor* Portal, AActor* OtherActor)

@@ -1,6 +1,9 @@
 #include "BasePlayerController.h"
 #include "WorldSetupWidget.h"
 #include "LoadingWidget.h"
+#include "AttributePanelWidget.h"
+#include "NotificationWidget.h"
+#include "AttributeSystemSubsystem.h"
 #include "ChunkManagerComponent.h"
 #include "PluginGameInstance.h"
 #include "CharacterImageSubsystem.h"
@@ -29,6 +32,33 @@ void ABasePlayerController::BeginPlay()
         if (PluginGameInstance)
         {
             WorldSetupWidgetClass = PluginGameInstance->WorldSetupWidgetClass;
+        }
+    }
+
+    // Create persistent notification widget (always on screen)
+    if (NotificationWidgetClass)
+    {
+        NotificationWidget = CreateWidget<UNotificationWidget>(this, NotificationWidgetClass);
+        if (NotificationWidget)
+        {
+            NotificationWidget->AddToViewport(100);  // High z-order
+
+            if (UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+                ->GetSubsystem<UAttributeSystemSubsystem>())
+            {
+                AttrSys->OnAttributeChanged.AddDynamic(NotificationWidget, &UNotificationWidget::ShowAttributeChange);
+            }
+        }
+    }
+
+    // Create persistent attribute panel (hidden by default)
+    if (AttributePanelClass)
+    {
+        AttributePanel = CreateWidget<UAttributePanelWidget>(this, AttributePanelClass);
+        if (AttributePanel)
+        {
+            AttributePanel->AddToViewport(50);
+            AttributePanel->SetVisibility(ESlateVisibility::Collapsed);
         }
     }
 
@@ -166,5 +196,22 @@ void ABasePlayerController::HideLoadingScreen()
     {
         LoadingWidget->RemoveFromParent();
         LoadingWidget = nullptr;
+    }
+}
+
+void ABasePlayerController::ToggleAttributePanel()
+{
+    if (!AttributePanel)
+    {
+        return;
+    }
+
+    if (AttributePanel->IsPanelOpen())
+    {
+        AttributePanel->ClosePanel();
+    }
+    else
+    {
+        AttributePanel->OpenPanel();
     }
 }

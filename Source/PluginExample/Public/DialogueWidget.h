@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "UIStylingHelper.h"
+#include "GameDataTypes.h"
 #include "DialogueWidget.generated.h"
 
 class UButton;
@@ -53,6 +54,30 @@ public:
     /** Called when a new message is added */
     UFUNCTION(BlueprintImplementableEvent)
     void OnMessageAdded();
+
+    /** Display attribute check result (dice animation and outcome) */
+    UFUNCTION(BlueprintImplementableEvent, Category = "RPG|Attribute")
+    void ShowAttributeCheckResult(const FAttributeCheckResult& Result);
+
+    /** Display attribute change notification */
+    UFUNCTION(BlueprintImplementableEvent, Category = "RPG|Attribute")
+    void ShowAttributeChange(const FString& AttributeName, int32 OldValue, int32 NewValue);
+
+    /** Start dice roll animation (text-based) - shows rolling numbers before final result */
+    UFUNCTION(BlueprintCallable, Category = "RPG|Dice")
+    void StartDiceRollAnimation(const FAttributeCheckResult& Result);
+
+    /** Get current dice roll animation state */
+    UFUNCTION(BlueprintPure, Category = "RPG|Dice")
+    bool IsDiceRolling() const { return bIsDiceRolling; }
+
+    /** Get current displayed dice value during animation */
+    UFUNCTION(BlueprintPure, Category = "RPG|Dice")
+    int32 GetCurrentDiceValue() const { return CurrentDiceValue; }
+
+    /** Update dice roll animation state (called in NativeTick) */
+    UFUNCTION(BlueprintCallable, Category = "RPG|Dice")
+    void UpdateDiceRoll(float DeltaTime);
 
     /** Select a dialogue choice */
     UFUNCTION(BlueprintCallable)
@@ -316,4 +341,26 @@ private:
 
     /** Whether we need to scroll to end next frame */
     bool bNeedScrollToEnd = false;
+
+    /** Dice roll animation state */
+    UPROPERTY()
+    bool bIsDiceRolling = false;
+
+    /** Current displayed dice value during animation */
+    UPROPERTY()
+    int32 CurrentDiceValue = 0;
+
+    /** Target dice value (final result) */
+    UPROPERTY()
+    int32 TargetDiceValue = 0;
+
+    /** Dice roll animation timer */
+    float DiceRollTimer = 0.0f;
+
+    /** Dice roll animation duration (total) */
+    float DiceRollDuration = 1.5f;
+
+    /** Stored result for when animation completes */
+    UPROPERTY()
+    FAttributeCheckResult PendingDiceResult;
 };

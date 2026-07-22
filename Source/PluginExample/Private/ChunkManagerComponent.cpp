@@ -2,6 +2,7 @@
 #include "GameChunkActor.h"
 #include "NPCCharacter.h"
 #include "DialogueWidget.h"
+#include "AttributeSystemSubsystem.h"
 #include "CharacterImageSubsystem.h"
 #include "LLMLoggerSubsystem.h"
 #include "LLMRuntime/Public/LLMCacheSubsystem.h"
@@ -10,6 +11,10 @@
 #include "Blueprint/UserWidget.h"
 #include "JsonObjectConverter.h"
 #include "LLMRuntime/Public/LLMChatCompletionAsyncAction.h"
+#include "AIImageGenerator/Public/AISceneAssetAsyncAction.h"
+#include "AIImageGenerator/Public/AIImageTextureFactory.h"
+#include "AIImageGenerator/Public/AIImageScenePromptLibrary.h"
+#include "Misc/Paths.h"
 
 namespace
 {
@@ -307,6 +312,11 @@ void UChunkManagerComponent::TryParseAndSpawnInitialChunk(const FString& Current
         }
     }
 
+    if (ChunkObj->HasField(TEXT("ground_texture_description")))
+    {
+        InitialChunk.GroundTextureDescription = ChunkObj->GetStringField(TEXT("ground_texture_description"));
+    }
+
     if (ChunkObj->HasField(TEXT("npcs")))
     {
         const TArray<TSharedPtr<FJsonValue>>* NPCs;
@@ -462,6 +472,44 @@ void UChunkManagerComponent::ParseInitialWorldResponse(const FString& JsonRespon
             WorldConfig.PlayerAppearance = JsonObject->GetStringField(TEXT("player_appearance"));
         }
 
+        // Parse player attributes
+        if (JsonObject->HasField(TEXT("player_attributes")))
+        {
+            const TArray<TSharedPtr<FJsonValue>>* AttrArray;
+            if (JsonObject->TryGetArrayField(TEXT("player_attributes"), AttrArray))
+            {
+                TArray<FPlayerAttribute> ParsedAttributes;
+                for (const auto& AttrVal : *AttrArray)
+                {
+                    const TSharedPtr<FJsonObject>& AttrObj = AttrVal->AsObject();
+                    if (!AttrObj.IsValid()) continue;
+
+                    FPlayerAttribute Attr;
+                    Attr.AttributeId = AttrObj->GetStringField(TEXT("id"));
+                    Attr.DisplayName = AttrObj->GetStringField(TEXT("display_name"));
+                    Attr.CurrentValue = AttrObj->GetNumberField(TEXT("value"));
+                    Attr.MinValue = AttrObj->HasField(TEXT("min")) ?
+                        AttrObj->GetNumberField(TEXT("min")) : 1;
+                    Attr.MaxValue = AttrObj->HasField(TEXT("max")) ?
+                        AttrObj->GetNumberField(TEXT("max")) : 20;
+                    Attr.Description = AttrObj->GetStringField(TEXT("description"));
+
+                    Attr.AttributeType = UAttributeSystemSubsystem::ParseAttributeType(
+                        AttrObj->GetStringField(TEXT("type")));
+
+                    ParsedAttributes.Add(Attr);
+                }
+
+                WorldConfig.PlayerAttributes = ParsedAttributes;
+
+                if (UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+                    ->GetSubsystem<UAttributeSystemSubsystem>())
+                {
+                    AttrSys->InitializeAttributes(ParsedAttributes);
+                }
+            }
+        }
+
         // 2. Then parse initial_chunk and spawn it (skip if already spawned by streaming)
         if (JsonObject->HasField(TEXT("initial_chunk")))
         {
@@ -485,6 +533,11 @@ void UChunkManagerComponent::ParseInitialWorldResponse(const FString& JsonRespon
                         InitialChunk.Tags.Add(Tag->AsString());
                     }
                 }
+            }
+
+            if (ChunkObj->HasField(TEXT("ground_texture_description")))
+            {
+                InitialChunk.GroundTextureDescription = ChunkObj->GetStringField(TEXT("ground_texture_description"));
             }
 
             if (ChunkObj->HasField(TEXT("npcs")))
@@ -564,6 +617,9 @@ void UChunkManagerComponent::ParseInitialWorldResponse(const FString& JsonRespon
                 if (ExistingChunk)
                 {
                     ExistingChunk->SetChunkData(InitialChunk);
+                    // The streaming spawn may have happened before ground_texture_description arrived.
+                    // Trigger texture generation now that we have the full data.
+                    RequestGroundTextureForChunk(ExistingChunk);
                 }
             }
             else
@@ -648,6 +704,11 @@ void UChunkManagerComponent::SpawnChunkAndNPCs(const FChunkData& ChunkData, cons
         CurrentChunk = NewChunk;
 
         OnChunkLoaded.Broadcast(NewChunk);
+
+        // Trigger async ground texture generation for the new chunk.
+        // RequestGroundTextureForChunk checks disk cache first, and only fires an
+        // AI image request when no cached texture exists and a ground_texture_description is present.
+        RequestGroundTextureForChunk(NewChunk);
     }
 }
 
@@ -848,6 +909,11 @@ void UChunkManagerComponent::ParseChunkGenerationResponse(const FString& JsonRes
                     NewChunk.Tags.Add(Tag->AsString());
                 }
             }
+        }
+
+        if (JsonObject->HasField(TEXT("ground_texture_description")))
+        {
+            NewChunk.GroundTextureDescription = JsonObject->GetStringField(TEXT("ground_texture_description"));
         }
 
         if (JsonObject->HasField(TEXT("npcs")))
@@ -1052,6 +1118,14 @@ void UChunkManagerComponent::StartDialogue(ANPCCharacter* NPC)
             ActiveDialogueWidget->OnMessageSubmittedDelegate.AddDynamic(this, &UChunkManagerComponent::SubmitPlayerTextInput);
             ActiveDialogueWidget->OnChoiceSelectedDelegate.AddDynamic(this, &UChunkManagerComponent::SubmitPlayerChoice);
             ActiveDialogueWidget->OnDialogueClosedDelegate.AddDynamic(this, &UChunkManagerComponent::EndDialogue);
+
+            // Bind attribute system events to dialogue widget
+            if (UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+                ->GetSubsystem<UAttributeSystemSubsystem>())
+            {
+                AttrSys->OnAttributeCheckCompleted.AddDynamic(ActiveDialogueWidget, &UDialogueWidget::ShowAttributeCheckResult);
+                AttrSys->OnAttributeChanged.AddDynamic(ActiveDialogueWidget, &UDialogueWidget::ShowAttributeChange);
+            }
 
             if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
             {
@@ -1298,6 +1372,32 @@ void UChunkManagerComponent::ExecuteDialogueActions(const TArray<FDialogueAction
             UE_LOG(LogTemp, Log, TEXT("Change NPC %s faction to %s"), *Action.NPCId, *Action.NewFaction);
             break;
 
+        case EDialogueActionType::TriggerCheck:
+            if (!Action.CheckId.IsEmpty())
+            {
+                if (const FAttributeCheckRequest* CheckReq = PendingCheckRequests.Find(Action.CheckId))
+                {
+                    ExecuteAttributeCheck(*CheckReq);
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("TriggerCheck failed: check_id %s not found in pending checks"), *Action.CheckId);
+                }
+            }
+            break;
+
+        case EDialogueActionType::ModifyAttribute:
+            if (!Action.AttributeId.IsEmpty() && Action.AttributeDelta != 0)
+            {
+                if (UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+                    ->GetSubsystem<UAttributeSystemSubsystem>())
+                {
+                    AttrSys->ModifyAttribute(Action.AttributeId, Action.AttributeDelta);
+                    UE_LOG(LogTemp, Log, TEXT("ModifyAttribute: %s by %d"), *Action.AttributeId, Action.AttributeDelta);
+                }
+            }
+            break;
+
         case EDialogueActionType::Custom:
             UE_LOG(LogTemp, Log, TEXT("Custom action: %s"), *Action.CustomData);
             break;
@@ -1310,6 +1410,37 @@ void UChunkManagerComponent::ExecuteDialogueActions(const TArray<FDialogueAction
     if (bShouldEndDialogue)
     {
         EndDialogue();
+    }
+}
+
+void UChunkManagerComponent::ExecuteAttributeCheck(const FAttributeCheckRequest& CheckReq)
+{
+    UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+        ->GetSubsystem<UAttributeSystemSubsystem>();
+    if (!AttrSys) return;
+
+    // Execute the check
+    FAttributeCheckResult Result = AttrSys->ExecuteAttributeCheck(CheckReq);
+
+    // Display check result in dialogue with dice animation
+    if (ActiveDialogueWidget)
+    {
+        // Show check information first
+        FString CheckInfo = FString::Printf(
+            TEXT("【%s】 DC: %d"),
+            *CheckReq.CheckName,
+            Result.DiceResult.DifficultyClass
+        );
+        ActiveDialogueWidget->AddMessageToHistory(TEXT("系统"), CheckInfo, false);
+
+        // Start dice roll animation
+        ActiveDialogueWidget->StartDiceRollAnimation(Result);
+    }
+
+    // Execute check result actions
+    if (Result.ExecutedActions.Num() > 0)
+    {
+        ExecuteDialogueActions(Result.ExecutedActions);
     }
 }
 
@@ -1601,6 +1732,26 @@ void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Resp
                                 Action.NewFaction = ActionObj->GetStringField(TEXT("new_faction"));
                             }
                         }
+                        else if (ActionTypeStr == TEXT("trigger_check"))
+                        {
+                            Action.ActionType = EDialogueActionType::TriggerCheck;
+                            if (ActionObj->HasField(TEXT("check_id")))
+                            {
+                                Action.CheckId = ActionObj->GetStringField(TEXT("check_id"));
+                            }
+                        }
+                        else if (ActionTypeStr == TEXT("modify_attribute"))
+                        {
+                            Action.ActionType = EDialogueActionType::ModifyAttribute;
+                            if (ActionObj->HasField(TEXT("attribute_id")))
+                            {
+                                Action.AttributeId = ActionObj->GetStringField(TEXT("attribute_id"));
+                            }
+                            if (ActionObj->HasField(TEXT("delta")))
+                            {
+                                Action.AttributeDelta = ActionObj->GetNumberField(TEXT("delta"));
+                            }
+                        }
                         else
                         {
                             Action.ActionType = EDialogueActionType::Custom;
@@ -1640,6 +1791,26 @@ void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Resp
                                     ChoiceAction.ExitId = ActionObj->GetStringField(TEXT("exit_id"));
                                 }
                             }
+                            else if (ActionTypeStr == TEXT("trigger_check"))
+                            {
+                                ChoiceAction.ActionType = EDialogueActionType::TriggerCheck;
+                                if (ActionObj->HasField(TEXT("check_id")))
+                                {
+                                    ChoiceAction.CheckId = ActionObj->GetStringField(TEXT("check_id"));
+                                }
+                            }
+                            else if (ActionTypeStr == TEXT("modify_attribute"))
+                            {
+                                ChoiceAction.ActionType = EDialogueActionType::ModifyAttribute;
+                                if (ActionObj->HasField(TEXT("attribute_id")))
+                                {
+                                    ChoiceAction.AttributeId = ActionObj->GetStringField(TEXT("attribute_id"));
+                                }
+                                if (ActionObj->HasField(TEXT("delta")))
+                                {
+                                    ChoiceAction.AttributeDelta = ActionObj->GetNumberField(TEXT("delta"));
+                                }
+                            }
                             ChoiceActionMap.Add(ChoiceIndex, ChoiceAction);
                         }
                         else if (ActionVal->Type == EJson::String)
@@ -1660,6 +1831,168 @@ void UChunkManagerComponent::HandleDialogueResponse(const FLLMChatResponse& Resp
 
             // Store pending choice actions
             PendingChoiceActions = ChoiceActionMap;
+
+            // Parse attribute check requests
+            PendingCheckRequests.Empty();
+            if (JsonObject->HasField(TEXT("attribute_checks")))
+            {
+                const TArray<TSharedPtr<FJsonValue>>* CheckArray;
+                if (JsonObject->TryGetArrayField(TEXT("attribute_checks"), CheckArray))
+                {
+                    for (const auto& CheckVal : *CheckArray)
+                    {
+                        const TSharedPtr<FJsonObject>& CheckObj = CheckVal->AsObject();
+                        if (!CheckObj.IsValid()) continue;
+
+                        FAttributeCheckRequest CheckReq;
+                        CheckReq.CheckId = CheckObj->GetStringField(TEXT("check_id"));
+                        CheckReq.CheckName = CheckObj->GetStringField(TEXT("check_name"));
+                        CheckReq.DifficultyClass = CheckObj->GetNumberField(TEXT("difficulty"));
+
+                        // Parse attribute list
+                        const TArray<TSharedPtr<FJsonValue>>* AttrIds;
+                        if (CheckObj->TryGetArrayField(TEXT("attributes"), AttrIds))
+                        {
+                            for (const auto& AttrId : *AttrIds)
+                            {
+                                CheckReq.AttributeIds.Add(AttrId->AsString());
+                            }
+                        }
+
+                        // Parse logic type
+                        FString LogicStr = CheckObj->GetStringField(TEXT("logic"));
+                        CheckReq.Logic = UAttributeSystemSubsystem::ParseCheckLogic(LogicStr);
+
+                        // Parse dice config
+                        FString DiceStr = CheckObj->GetStringField(TEXT("dice_type"));
+                        CheckReq.DiceType = UAttributeSystemSubsystem::ParseDiceType(DiceStr);
+                        CheckReq.DiceCount = CheckObj->HasField(TEXT("dice_count")) ?
+                            CheckObj->GetNumberField(TEXT("dice_count")) : 1;
+
+                        // Parse advantage
+                        if (CheckObj->HasField(TEXT("advantage")))
+                        {
+                            FString AdvStr = CheckObj->GetStringField(TEXT("advantage"));
+                            CheckReq.Advantage = UAttributeSystemSubsystem::ParseAdvantage(AdvStr);
+                        }
+
+                        // Parse success/failure branches
+                        CheckReq.SuccessText = CheckObj->GetStringField(TEXT("success_text"));
+                        CheckReq.FailureText = CheckObj->GetStringField(TEXT("failure_text"));
+
+                        // Parse success actions
+                        if (CheckObj->HasField(TEXT("success_actions")))
+                        {
+                            const TArray<TSharedPtr<FJsonValue>>* SucActions;
+                            if (CheckObj->TryGetArrayField(TEXT("success_actions"), SucActions))
+                            {
+                                for (const auto& ActVal : *SucActions)
+                                {
+                                    const TSharedPtr<FJsonObject>& ActObj = ActVal->AsObject();
+                                    if (!ActObj.IsValid()) continue;
+                                    FDialogueAction Act;
+                                    FString ActType = ActObj->GetStringField(TEXT("type"));
+                                    if (ActType == TEXT("unlock_exit"))
+                                    {
+                                        Act.ActionType = EDialogueActionType::UnlockExit;
+                                        if (ActObj->HasField(TEXT("exit_id")))
+                                            Act.ExitId = ActObj->GetStringField(TEXT("exit_id"));
+                                    }
+                                    else if (ActType == TEXT("end_dialogue"))
+                                    {
+                                        Act.ActionType = EDialogueActionType::EndDialogue;
+                                    }
+                                    CheckReq.SuccessActions.Add(Act);
+                                }
+                            }
+                        }
+
+                        // Parse failure actions
+                        if (CheckObj->HasField(TEXT("failure_actions")))
+                        {
+                            const TArray<TSharedPtr<FJsonValue>>* FailActions;
+                            if (CheckObj->TryGetArrayField(TEXT("failure_actions"), FailActions))
+                            {
+                                for (const auto& ActVal : *FailActions)
+                                {
+                                    const TSharedPtr<FJsonObject>& ActObj = ActVal->AsObject();
+                                    if (!ActObj.IsValid()) continue;
+                                    FDialogueAction Act;
+                                    FString ActType = ActObj->GetStringField(TEXT("type"));
+                                    if (ActType == TEXT("unlock_exit"))
+                                    {
+                                        Act.ActionType = EDialogueActionType::UnlockExit;
+                                        if (ActObj->HasField(TEXT("exit_id")))
+                                            Act.ExitId = ActObj->GetStringField(TEXT("exit_id"));
+                                    }
+                                    else if (ActType == TEXT("end_dialogue"))
+                                    {
+                                        Act.ActionType = EDialogueActionType::EndDialogue;
+                                    }
+                                    CheckReq.FailureActions.Add(Act);
+                                }
+                            }
+                        }
+
+                        // Parse success modifications
+                        if (CheckObj->HasField(TEXT("success_modifications")))
+                        {
+                            const TArray<TSharedPtr<FJsonValue>>* SucMods;
+                            if (CheckObj->TryGetArrayField(TEXT("success_modifications"), SucMods))
+                            {
+                                for (const auto& ModVal : *SucMods)
+                                {
+                                    const TSharedPtr<FJsonObject>& ModObj = ModVal->AsObject();
+                                    FAttributeModification Mod;
+                                    Mod.AttributeId = ModObj->GetStringField(TEXT("attribute_id"));
+                                    Mod.Delta = ModObj->GetNumberField(TEXT("delta"));
+                                    CheckReq.SuccessModifications.Add(Mod);
+                                }
+                            }
+                        }
+
+                        // Parse failure modifications
+                        if (CheckObj->HasField(TEXT("failure_modifications")))
+                        {
+                            const TArray<TSharedPtr<FJsonValue>>* FailMods;
+                            if (CheckObj->TryGetArrayField(TEXT("failure_modifications"), FailMods))
+                            {
+                                for (const auto& ModVal : *FailMods)
+                                {
+                                    const TSharedPtr<FJsonObject>& ModObj = ModVal->AsObject();
+                                    FAttributeModification Mod;
+                                    Mod.AttributeId = ModObj->GetStringField(TEXT("attribute_id"));
+                                    Mod.Delta = ModObj->GetNumberField(TEXT("delta"));
+                                    CheckReq.FailureModifications.Add(Mod);
+                                }
+                            }
+                        }
+
+                        PendingCheckRequests.Add(CheckReq.CheckId, CheckReq);
+                    }
+                }
+            }
+
+            // Parse direct attribute modifications
+            if (JsonObject->HasField(TEXT("attribute_modifications")))
+            {
+                const TArray<TSharedPtr<FJsonValue>>* ModArray;
+                if (JsonObject->TryGetArrayField(TEXT("attribute_modifications"), ModArray))
+                {
+                    if (UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+                        ->GetSubsystem<UAttributeSystemSubsystem>())
+                    {
+                        for (const auto& ModVal : *ModArray)
+                        {
+                            const TSharedPtr<FJsonObject>& ModObj = ModVal->AsObject();
+                            if (!ModObj.IsValid()) continue;
+                            FString AttrId = ModObj->GetStringField(TEXT("attribute_id"));
+                            int32 Delta = ModObj->GetNumberField(TEXT("delta"));
+                            AttrSys->ModifyAttribute(AttrId, Delta);
+                        }
+                    }
+                }
+            }
 
             if (bInitialChoicesOnlyResponse)
             {
@@ -1758,7 +2091,244 @@ FString UChunkManagerComponent::BuildDialogueContextInfo() const
         *ExitsInfo
     );
 
+    // Append player attribute state
+    if (UAttributeSystemSubsystem* AttrSys = GetGameInstance()
+        ->GetSubsystem<UAttributeSystemSubsystem>())
+    {
+        ContextInfo += TEXT("\n=== PLAYER ATTRIBUTES ===\n");
+        ContextInfo += AttrSys->BuildAttributeContextString();
+        ContextInfo += TEXT("\n=== END ATTRIBUTES ===");
+    }
+
     return ContextInfo;
+}
+
+FString UChunkManagerComponent::GetGroundTextureSaveDirectory(const FString& ChunkId) const
+{
+    // Saved/AIImageGenerator/Scenes/{ChunkId}/
+    return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("AIImageGenerator"), TEXT("Scenes"), ChunkId);
+}
+
+UTexture2D* UChunkManagerComponent::TryLoadCachedGroundTexture(const FString& ChunkId) const
+{
+    if (ChunkId.IsEmpty())
+    {
+        return nullptr;
+    }
+
+    const FString Dir = GetGroundTextureSaveDirectory(ChunkId);
+    // AISceneAssetAsyncAction saves the image as {FilePrefix}.{ext}. We use the chunk id as file prefix.
+    const FString PngPath = FPaths::Combine(Dir, ChunkId + TEXT(".png"));
+    const FString JpgPath = FPaths::Combine(Dir, ChunkId + TEXT(".jpg"));
+
+    if (FPaths::FileExists(PngPath))
+    {
+        return UAIImageTextureFactory::CreateTextureFromFile(PngPath, FString::Printf(TEXT("GroundTexture_%s"), *ChunkId));
+    }
+    if (FPaths::FileExists(JpgPath))
+    {
+        return UAIImageTextureFactory::CreateTextureFromFile(JpgPath, FString::Printf(TEXT("GroundTexture_%s"), *ChunkId));
+    }
+    return nullptr;
+}
+
+FAISceneAssetRequest UChunkManagerComponent::BuildGroundTextureRequest(const FChunkData& ChunkData) const
+{
+    FAISceneAssetRequest Request;
+    FAISceneAssetSpec& Spec = Request.AssetSpec;
+
+    Spec.AssetName = ChunkData.ChunkId;
+    Spec.AssetType = EAISceneAssetType::Tile;
+    Spec.PaletteType = EAIScenePaletteType::ModernPixel;
+    Spec.PixelStyle = TEXT("经典JRPG像素风，清晰像素块，无抗锯齿");
+    Spec.bTileable = true;
+    Spec.bTransparentBackground = false;
+    Spec.TargetWidth = 512;
+    Spec.TargetHeight = 512;
+
+    // Build worldview context from world config so the texture matches the overall setting.
+    FString Worldview = WorldConfig.WorldName;
+    if (!WorldConfig.Era.IsEmpty())
+    {
+        Worldview += TEXT("，") + WorldConfig.Era;
+    }
+    if (!WorldConfig.Geography.IsEmpty())
+    {
+        Worldview += TEXT("，") + WorldConfig.Geography;
+    }
+    Spec.Worldview = Worldview;
+
+    // Category from chunk type
+    Spec.Category = ChunkData.ChunkType.IsEmpty() ? TEXT("地面") : ChunkData.ChunkType;
+
+    // Description: ONLY surface material description, never include scene name (e.g. "迷宫入口")
+    // because the AI would otherwise try to draw the entrance structure itself.
+    FString Description = ChunkData.GroundTextureDescription;
+    if (Description.IsEmpty())
+    {
+        // Fallback: derive a basic description from chunk type only.
+        Description = FString::Printf(TEXT("%s地表材质纹理"),
+            ChunkData.ChunkType.IsEmpty() ? TEXT("通用") : *ChunkData.ChunkType);
+    }
+    Spec.Description = Description;
+
+    // doubao-seedream-4-5 does not support "1K" preset; use "2K" (minimum supported).
+    Request.Size = TEXT("2K");
+    Request.OutputFormat = TEXT("png");
+    Request.ResponseFormat = TEXT("url");
+    Request.SaveDirectory = GetGroundTextureSaveDirectory(ChunkData.ChunkId);
+    Request.FilePrefix = ChunkData.ChunkId;
+    Request.TimeoutSeconds = 120.0f;
+
+    return Request;
+}
+
+void UChunkManagerComponent::RequestGroundTextureForChunk(AGameChunkActor* Chunk)
+{
+    if (!Chunk)
+    {
+        return;
+    }
+
+    const FString ChunkId = Chunk->GetChunkId();
+    if (ChunkId.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[ChunkManager] RequestGroundTextureForChunk: chunk has empty id, skipping"));
+        return;
+    }
+
+    // Already in progress - skip.
+    if (GeneratingGroundTextureChunkIds.Contains(ChunkId))
+    {
+        UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Ground texture for chunk %s already generating, skipping"), *ChunkId);
+        return;
+    }
+
+    // 1. Try disk cache first.
+    if (UTexture2D* Cached = TryLoadCachedGroundTexture(ChunkId))
+    {
+        UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Ground texture disk cache hit for chunk %s"), *ChunkId);
+        Chunk->SetGroundTexture(Cached);
+        return;
+    }
+
+    // 2. Fire async generation.
+    const FChunkData Data = Chunk->GetChunkData();
+    if (Data.GroundTextureDescription.IsEmpty())
+    {
+        UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Chunk %s has no ground_texture_description, skipping texture generation"), *ChunkId);
+        return;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Requesting ground texture generation for chunk %s"), *ChunkId);
+    GeneratingGroundTextureChunkIds.Add(ChunkId);
+    PendingGroundTextureChunks.Add(ChunkId, Chunk);
+
+    const FAISceneAssetRequest Request = BuildGroundTextureRequest(Data);
+    UAISceneAssetAsyncAction* Action = UAISceneAssetAsyncAction::GenerateSceneAsset(this, Request);
+    if (Action)
+    {
+        Action->Completed.AddDynamic(this, &UChunkManagerComponent::HandleGroundTextureResult);
+        PendingGroundTextureActions.Add(ChunkId, Action);
+        Action->Activate();
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("[ChunkManager] Failed to create ground texture action for chunk %s"), *ChunkId);
+        GeneratingGroundTextureChunkIds.Remove(ChunkId);
+        PendingGroundTextureChunks.Remove(ChunkId);
+    }
+}
+
+void UChunkManagerComponent::HandleGroundTextureResult(const FAISceneAssetResult& Result)
+{
+    // Identify which chunk this result belongs to by checking pending actions.
+    FString FoundChunkId;
+    AGameChunkActor* TargetChunk = nullptr;
+
+    for (const auto& Pair : PendingGroundTextureActions)
+    {
+        // The action that broadcast is the one whose broadcast we are handling.
+        // We can't directly compare the broadcasting action pointer here, so we match
+        // by checking if the chunk is still pending. Since only one action completes
+        // at a time in practice, and we store one action per chunk, we find the first
+        // pending entry. A more robust approach would store the action pointer.
+        FoundChunkId = Pair.Key;
+        break;
+    }
+
+    // More robust: match by the image's saved file path which contains the chunk id.
+    // The result image LocalFilePath is under Saved/AIImageGenerator/Scenes/{ChunkId}/.
+    if (Result.bSuccess && !Result.Image.LocalFilePath.IsEmpty())
+    {
+        const FString Path = Result.Image.LocalFilePath;
+        for (const auto& Pair : PendingGroundTextureChunks)
+        {
+            const FString ExpectedDir = GetGroundTextureSaveDirectory(Pair.Key);
+            if (Path.StartsWith(ExpectedDir))
+            {
+                FoundChunkId = Pair.Key;
+                break;
+            }
+        }
+    }
+
+    if (FoundChunkId.IsEmpty())
+    {
+        // Fallback: just pick the first pending chunk (single-flight assumption).
+        auto It = PendingGroundTextureChunks.CreateConstIterator();
+        if (It)
+        {
+            FoundChunkId = It->Key;
+        }
+    }
+
+    if (!FoundChunkId.IsEmpty())
+    {
+        if (TObjectPtr<AGameChunkActor>* ChunkPtr = PendingGroundTextureChunks.Find(FoundChunkId))
+        {
+            TargetChunk = ChunkPtr->Get();
+        }
+
+        if (Result.bSuccess)
+        {
+            UE_LOG(LogTemp, Log, TEXT("[ChunkManager] Ground texture generated for chunk %s"), *FoundChunkId);
+
+            if (TargetChunk)
+            {
+                // Prefer loading from the saved disk file (stable path, proper texture settings).
+                if (!Result.Image.LocalFilePath.IsEmpty())
+                {
+                    if (UTexture2D* Tex = UAIImageTextureFactory::CreateTextureFromFile(
+                        Result.Image.LocalFilePath,
+                        FString::Printf(TEXT("GroundTexture_%s"), *FoundChunkId)))
+                    {
+                        TargetChunk->SetGroundTexture(Tex);
+                    }
+                }
+                else
+                {
+                    // Fall back to creating texture directly from the image result.
+                    if (UTexture2D* Tex = UAIImageTextureFactory::CreateTextureFromImageResult(
+                        Result.Image,
+                        FString::Printf(TEXT("GroundTexture_%s"), *FoundChunkId)))
+                    {
+                        TargetChunk->SetGroundTexture(Tex);
+                    }
+                }
+            }
+        }
+        else
+        {
+            UE_LOG(LogTemp, Error, TEXT("[ChunkManager] Ground texture generation failed for chunk %s: %s"),
+                *FoundChunkId, *Result.Error);
+        }
+
+        // Cleanup tracking.
+        PendingGroundTextureActions.Remove(FoundChunkId);
+        PendingGroundTextureChunks.Remove(FoundChunkId);
+        GeneratingGroundTextureChunkIds.Remove(FoundChunkId);
+    }
 }
 
 FString UChunkManagerComponent::BuildWorldGenerationSystemPrompt() const
@@ -1775,6 +2345,7 @@ FString UChunkManagerComponent::BuildWorldGenerationSystemPrompt() const
     Result += TEXT("        \"description\": \"Area description\",\n");
     Result += TEXT("        \"type\": \"Village/Town/Forest/Dungeon/etc\",\n");
     Result += TEXT("        \"tags\": [\"tag1\"],\n");
+    Result += TEXT("        \"ground_texture_description\": \"对该区域地面/地表材质的纯平面纹理描述，用于生成俯视角度的游戏地砖纹理。只描述地表材质本身（如石板、泥土、草地、沙砾）、颜色、植被、湿度、磨损痕迹，严禁描述建筑、门、入口、墙壁、通道等任何立体结构，严禁描述人物或叙事。例如：长满青苔的灰色石板、干裂的褐色黄土、铺满枯黄落叶的林间泥土。\",\n");
     Result += TEXT("        \"npcs\": [{\"name\":\"NPC Name\",\"description\":\"...\",\"personality\":\"...\",\"dialogue_style\":\"...\",\"faction\":\"...\",\"initial_dialogue\":\"...\"}],\n");
     Result += TEXT("        \"exit_points\": [{\"exit_id\":\"exit_north\",\"direction\":0,\"target_chunk_id\":\"\"}]\n");
     Result += TEXT("    },\n");
@@ -1785,10 +2356,31 @@ FString UChunkManagerComponent::BuildWorldGenerationSystemPrompt() const
     Result += TEXT("    \"factions\": [\"Faction 1\"],\n");
     Result += TEXT("    \"rules\": [\"Rule 1\"],\n");
     Result += TEXT("    \"story_theme\": \"Main theme\",\n");
-    Result += TEXT("    \"player_appearance\": \"主角外貌描述，用于生成角色图。包含性别、年龄、种族、发型、服装、显著特征等\"\n");
+    Result += TEXT("    \"player_appearance\": \"主角外貌描述，用于生成角色图。包含性别、年龄、种族、发型、服装、显著特征等\",\n");
+    Result += TEXT("    \"player_attributes\": [\n");
+    Result += TEXT("        {\n");
+    Result += TEXT("            \"id\": \"combat\",\n");
+    Result += TEXT("            \"display_name\": \"战斗力\",\n");
+    Result += TEXT("            \"type\": \"physical\",\n");
+    Result += TEXT("            \"value\": 12,\n");
+    Result += TEXT("            \"min\": 1,\n");
+    Result += TEXT("            \"max\": 20,\n");
+    Result += TEXT("            \"description\": \"角色的物理战斗能力，影响战斗判定\"\n");
+    Result += TEXT("        }\n");
+    Result += TEXT("    ]\n");
     Result += TEXT("}\n\n");
     Result += TEXT("Exit directions (degrees): 0=North, 90=East, 180=South, 270=West. Use only these 4 directions. NPC positions and portal positions are auto-placed by the game engine.\n");
-    Result += TEXT("Requirements: 1-2 NPCs and 2-4 exits in initial_chunk. Output valid JSON only.");
+    Result += TEXT("Requirements: 1-2 NPCs and 2-4 exits in initial_chunk. Output valid JSON only.\n\n");
+    Result += TEXT("属性生成规则：\n");
+    Result += TEXT("- 根据世界观生成 4-8 个符合设定的主角属性\n");
+    Result += TEXT("- 属性类型仅限: physical（物理）、mental（精神）、social（社交）、special（特殊）\n");
+    Result += TEXT("- 属性值范围 1-20，初始值总和建议在 60-80 之间\n");
+    Result += TEXT("- 中世纪奇幻世界典型属性: 战斗力、敏捷、法力、口才、感知、体质\n");
+    Result += TEXT("- 科幻世界典型属性: 科技、黑客、魅力、反应、智力、体能\n");
+    Result += TEXT("- 侦探世界典型属性: 逻辑、共情、智力、说服、直觉、意志\n");
+    Result += TEXT("- 每个属性必须有清晰的 description，说明其在判定中的作用\n");
+    Result += TEXT("- 属性ID使用英文小写+下划线（如 combat_power、magic_affinity）\n");
+    Result += TEXT("- 属性应覆盖物理、精神、社交三个维度，确保判定场景多样");
     return Result;
 }
 
@@ -1803,6 +2395,7 @@ FString UChunkManagerComponent::BuildChunkGenerationSystemPrompt() const
     Result += TEXT("    \"description\": \"Description\",\n");
     Result += TEXT("    \"type\": \"Village/Town/Forest/Dungeon/etc\",\n");
     Result += TEXT("    \"tags\": [\"tag1\"],\n");
+    Result += TEXT("    \"ground_texture_description\": \"对该区域地面/地表材质的纯平面纹理描述，用于生成俯视角度的游戏地砖纹理。只描述地表材质本身（如石板、泥土、草地、沙砾）、颜色、植被、湿度、磨损痕迹，严禁描述建筑、门、入口、墙壁、通道等任何立体结构，严禁描述人物或叙事。例如：长满青苔的灰色石板、干裂的褐色黄土、铺满枯黄落叶的林间泥土。\",\n");
     Result += TEXT("    \"npcs\": [{\"name\":\"NPC Name\",\"description\":\"...\",\"personality\":\"...\",\"dialogue_style\":\"...\",\"faction\":\"...\",\"initial_dialogue\":\"...\"}],\n");
     Result += TEXT("    \"exit_points\": [{\"exit_id\":\"exit_XXX\",\"direction\":0}]\n");
     Result += TEXT("}\n\n");
@@ -1853,7 +2446,59 @@ FString UChunkManagerComponent::BuildDialogueSystemPrompt() const
     Result += TEXT("- end_dialogue 只能用于离开/再见类选项，其他选项一律不加\n");
     Result += TEXT("- 对话界面已有默认的'离开'按钮，通常不需要额外添加离开选项\n");
     Result += TEXT("- unlock_exit 会触发新区域生成和传送门创建，玩家随后可以进入传送门前往\n");
-    Result += TEXT("- 大多数选项只是继续对话，不需要标记任何动作，留空即可");
+    Result += TEXT("- 大多数选项只是继续对话，不需要标记任何动作，留空即可\n\n");
+    Result += TEXT("属性判定规则：\n");
+    Result += TEXT("当对话中出现需要能力验证的情境时（战斗、闪避、说服、破解等），可以使用属性判定：\n");
+    Result += TEXT("- 在 attribute_checks 数组中定义判定请求\n");
+    Result += TEXT("- 在 actions 或 choice_actions 中通过 {\"type\": \"trigger_check\", \"check_id\": \"xxx\"} 触发判定\n");
+    Result += TEXT("- 必须同时提供 success_text 和 failure_text 两套分支\n");
+    Result += TEXT("- logic: \"intersection\" 表示所有属性都要达标，\"union\" 表示任一达标即可\n");
+    Result += TEXT("- difficulty 建议 5-20 之间（简单 5-8，普通 10-12，困难 15-18，极难 20）\n");
+    Result += TEXT("- dice_type 默认 \"d20\"，dice_count 默认 1\n");
+    Result += TEXT("- advantage: \"advantage\"（优势，取较高）、\"disadvantage\"（劣势，取较低）、\"normal\"（正常）\n");
+    Result += TEXT("- 失败分支必须提供后续路径，不能导致剧情卡死\n\n");
+    Result += TEXT("属性修改规则：\n");
+    Result += TEXT("- 在 attribute_modifications 中定义直接修改（不涉及判定）\n");
+    Result += TEXT("- delta 为正数表示增加，负数表示减少\n");
+    Result += TEXT("- 单次修改幅度建议 1-3，避免数值膨胀\n");
+    Result += TEXT("- 修改应有合理的 reason（如\"经过训练\"、\"受伤\"、\"获得灵感\"）\n\n");
+    Result += TEXT("使用时机建议：\n");
+    Result += TEXT("- 战斗场景：战斗力/敏捷判定（闪避、命中、格挡）\n");
+    Result += TEXT("- 交涉场景：口才/魅力判定（说服、欺骗、威吓）\n");
+    Result += TEXT("- 探索场景：感知/智力判定（发现隐藏、解读文字、破解机关）\n");
+    Result += TEXT("- 特殊场景：法力判定（施法、抵抗魔法）、体质判定（抵抗毒素、长时间奔跑）\n\n");
+    Result += TEXT("JSON 扩展字段示例：\n");
+    Result += TEXT("{\n");
+    Result += TEXT("  \"response_text\": \"...\",\n");
+    Result += TEXT("  \"npc_expression\": \"neutral\",\n");
+    Result += TEXT("  \"player_expression\": \"neutral\",\n");
+    Result += TEXT("  \"choices\": [\"试图说服守卫\", \"转身离开\"],\n");
+    Result += TEXT("  \"actions\": [{\"type\": \"trigger_check\", \"check_id\": \"persuade_1\"}],\n");
+    Result += TEXT("  \"choice_actions\": {\"0\": {\"type\": \"trigger_check\", \"check_id\": \"persuade_1\"}},\n");
+    Result += TEXT("  \"attribute_checks\": [{\n");
+    Result += TEXT("    \"check_id\": \"persuade_1\",\n");
+    Result += TEXT("    \"check_name\": \"说服守卫\",\n");
+    Result += TEXT("    \"attributes\": [\"eloquence\", \"charisma\"],\n");
+    Result += TEXT("    \"logic\": \"union\",\n");
+    Result += TEXT("    \"difficulty\": 12,\n");
+    Result += TEXT("    \"dice_type\": \"d20\",\n");
+    Result += TEXT("    \"dice_count\": 1,\n");
+    Result += TEXT("    \"advantage\": \"normal\",\n");
+    Result += TEXT("    \"success_text\": \"守卫被你的言辞打动，缓缓侧身让开了道路。\",\n");
+    Result += TEXT("    \"failure_text\": \"守卫冷哼一声，丝毫不为所动。你不得不另想办法。\",\n");
+    Result += TEXT("    \"success_actions\": [{\"type\": \"unlock_exit\", \"exit_id\": \"exit_north\"}],\n");
+    Result += TEXT("    \"failure_actions\": [],\n");
+    Result += TEXT("    \"success_modifications\": [{\"attribute_id\": \"eloquence\", \"delta\": 1}],\n");
+    Result += TEXT("    \"failure_modifications\": []\n");
+    Result += TEXT("  }],\n");
+    Result += TEXT("  \"attribute_modifications\": [{\"attribute_id\": \"combat\", \"delta\": 1, \"reason\": \"经历了一场战斗训练\"}]\n");
+    Result += TEXT("}\n\n");
+    Result += TEXT("属性修改动作类型（actions / choice_actions）：\n");
+    Result += TEXT("5. trigger_check - 触发属性判定\n");
+    Result += TEXT("   示例：{\"type\": \"trigger_check\", \"check_id\": \"persuade_1\"}\n");
+    Result += TEXT("   必须在 attribute_checks 数组中定义对应的判定\n");
+    Result += TEXT("6. modify_attribute - 直接修改属性值\n");
+    Result += TEXT("   示例：{\"type\": \"modify_attribute\", \"attribute_id\": \"combat\", \"delta\": 1}");
     return Result;
 }
 

@@ -4,6 +4,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "GameDataTypes.h"
 #include "LLMRuntime/Public/LLMTypes.h"
+#include "AIImageGenerator/Public/AIImageTypes.h"
 #include "ChunkManagerComponent.generated.h"
 
 class AGameChunkActor;
@@ -12,6 +13,8 @@ class ULLMChatCompletionAsyncAction;
 class UDialogueWidget;
 class ULLMLoggerSubsystem;
 class UCharacterImageSubsystem;
+class UAISceneAssetAsyncAction;
+class UTexture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChunkLoaded, AGameChunkActor*, Chunk);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueStarted, ANPCCharacter*, NPC, const FString&, InitialText);
@@ -68,6 +71,10 @@ public:
     UFUNCTION()
     void HandleCharacterImageReady(const FString& CharacterId);
 
+    /** Request async generation (or disk cache load) of the ground texture for a chunk. */
+    UFUNCTION(BlueprintCallable, Category = "RPG|Chunk|GroundTexture")
+    void RequestGroundTextureForChunk(AGameChunkActor* Chunk);
+
     /** End current dialogue */
     UFUNCTION(BlueprintCallable)
     void EndDialogue();
@@ -109,7 +116,7 @@ public:
     FOnDialogueEnded OnDialogueEnded;
 
     /** Dialogue widget class to use */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     TSubclassOf<UDialogueWidget> DialogueWidgetClass;
 
     /** Chunk actor class to spawn */
@@ -189,6 +196,19 @@ private:
     FString BuildChunkGenerationSystemPrompt() const;
     FString BuildDialogueSystemPrompt() const;
 
+    /** Build the scene asset request for a chunk's ground texture based on its GroundTextureDescription. */
+    FAISceneAssetRequest BuildGroundTextureRequest(const FChunkData& ChunkData) const;
+
+    /** Try loading a cached ground texture from disk for the given chunk id. */
+    UTexture2D* TryLoadCachedGroundTexture(const FString& ChunkId) const;
+
+    /** Compute the disk save directory for a chunk's ground texture. */
+    FString GetGroundTextureSaveDirectory(const FString& ChunkId) const;
+
+    /** Async callback: chunk ground texture generation completed. */
+    UFUNCTION()
+    void HandleGroundTextureResult(const FAISceneAssetResult& Result);
+
     /** Build context info about current game state */
     FString BuildDialogueContextInfo() const;
 
@@ -197,6 +217,9 @@ private:
 
     /** Send dialogue request to LLM with full history */
     void SendDialogueRequest(bool bGenerateGreeting = false);
+
+    /** Execute attribute check from dialogue response */
+    void ExecuteAttributeCheck(const FAttributeCheckRequest& CheckReq);
 
     UPROPERTY()
     AGameChunkActor* CurrentChunk;
@@ -251,6 +274,9 @@ private:
     /** Actions associated with each choice (by index) */
     TMap<int32, FDialogueAction> PendingChoiceActions;
 
+    /** Attribute check requests from current dialogue response (by CheckId) */
+    TMap<FString, FAttributeCheckRequest> PendingCheckRequests;
+
     /** Temporary storage for chunk generation callback */
     FString PendingFromChunkId;
     FString PendingExitId;
@@ -276,4 +302,16 @@ private:
     FDateTime WorldGenStartTime;
     FDateTime ChunkGenStartTime;
     FDateTime DialogueStartTime;
+
+    /** Pending ground-texture async actions keyed by chunk id (prevents duplicate requests). */
+    UPROPERTY()
+    TMap<FString, TObjectPtr<UAISceneAssetAsyncAction>> PendingGroundTextureActions;
+
+    /** Chunks currently waiting for a ground texture generation, keyed by chunk id. */
+    UPROPERTY()
+    TMap<FString, TObjectPtr<AGameChunkActor>> PendingGroundTextureChunks;
+
+    /** Chunks whose ground texture generation is already in progress (dedup set). */
+    UPROPERTY()
+    TSet<FString> GeneratingGroundTextureChunkIds;
 };

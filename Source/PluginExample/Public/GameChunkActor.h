@@ -8,6 +8,9 @@
 class UBoxComponent;
 class USceneComponent;
 class UTextRenderComponent;
+class UStaticMeshComponent;
+class UMaterialInstanceDynamic;
+class UTexture2D;
 class ANPCCharacter;
 class APortalActor;
 
@@ -81,6 +84,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Chunk")
     void SetReverseExitTarget(const FString& SourceChunkId, float EntryDirection);
 
+    /** Apply a generated ground texture to the chunk mesh. Pass nullptr to hide the ground. */
+    UFUNCTION(BlueprintCallable, Category = "Chunk|GroundTexture")
+    void SetGroundTexture(UTexture2D* InTexture);
+
 protected:
     virtual void BeginPlay() override;
 
@@ -92,7 +99,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float ChunkSize = 1000.0f;
 
-    /** Base mesh for the chunk */
+    /** Base mesh for the chunk (used as ground plane) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TObjectPtr<UStaticMeshComponent> ChunkMesh;
 
@@ -107,6 +114,26 @@ public:
     /** Chunk name display */
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     TObjectPtr<UTextRenderComponent> ChunkNameLabel;
+
+    /** Plane mesh asset used for the ground (defaults to engine BasicShapes/Plane) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk|GroundTexture")
+    FSoftObjectPath GroundMeshAsset = FSoftObjectPath(TEXT("/Engine/BasicShapes/Plane.Plane"));
+
+    /** Base material for the ground (unlit, supports a texture parameter named by GroundTextureParameterName) */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk|GroundTexture")
+    FSoftObjectPath GroundBaseMaterial = FSoftObjectPath(TEXT("/Paper2D/MaskedUnlitSpriteMaterial"));
+
+    /** Texture parameter name inside GroundBaseMaterial that will receive the generated ground texture */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk|GroundTexture")
+    FName GroundTextureParameterName = TEXT("SpriteTexture");
+
+    /** Dynamic material instance for ground texture switching */
+    UPROPERTY(BlueprintReadOnly, Category = "Chunk|GroundTexture")
+    TObjectPtr<UMaterialInstanceDynamic> GroundMaterial;
+
+    /** Currently applied ground texture */
+    UPROPERTY(BlueprintReadOnly, Category = "Chunk|GroundTexture")
+    TObjectPtr<UTexture2D> CurrentGroundTexture;
 
 private:
     UPROPERTY()

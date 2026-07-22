@@ -72,6 +72,11 @@ void UDialogueWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
         UpdateTypewriter(InDeltaTime);
     }
 
+    if (bIsDiceRolling)
+    {
+        UpdateDiceRoll(InDeltaTime);
+    }
+
     if (bThinkingVisible && ThinkingText)
     {
         ThinkingDotTimer += InDeltaTime;
@@ -758,4 +763,77 @@ void UDialogueWidget::CreateRuntimeBackground()
     // If we have a root widget, try to wrap content in the border
     // Note: In UMG, we can't easily reparent widgets at runtime
     // Instead, we add the border as a background and it sits behind content
+}
+
+void UDialogueWidget::StartDiceRollAnimation(const FAttributeCheckResult& Result)
+{
+    bIsDiceRolling = true;
+    DiceRollTimer = 0.0f;
+    TargetDiceValue = Result.DiceResult.DiceTotal;
+    CurrentDiceValue = 0;
+    PendingDiceResult = Result;
+
+    // Stop typewriter if active
+    bIsTypewriterActive = false;
+
+    // Display initial rolling text
+    if (DialogueText)
+    {
+        DialogueText->SetText(FText::FromString(TEXT("🎲 掷骰中...")));
+    }
+}
+
+void UDialogueWidget::UpdateDiceRoll(float DeltaTime)
+{
+    if (!bIsDiceRolling)
+    {
+        return;
+    }
+
+    DiceRollTimer += DeltaTime;
+
+    // Get dice max value for random range
+    int32 MaxValue = 20;
+    switch (PendingDiceResult.DiceResult.DiceType)
+    {
+        case EDiceType::D4:   MaxValue = 4;   break;
+        case EDiceType::D6:   MaxValue = 6;   break;
+        case EDiceType::D8:   MaxValue = 8;   break;
+        case EDiceType::D10:  MaxValue = 10;  break;
+        case EDiceType::D12:  MaxValue = 12;  break;
+        case EDiceType::D100: MaxValue = 100; break;
+        default:               MaxValue = 20;  break;
+    }
+
+    // Randomize displayed value during animation
+    CurrentDiceValue = FMath::RandRange(1, MaxValue);
+
+    // Display rolling text with current value
+    if (DialogueText)
+    {
+        FString DiceStr = TEXT("d20");
+        switch (PendingDiceResult.DiceResult.DiceType)
+        {
+            case EDiceType::D4:   DiceStr = TEXT("d4");   break;
+            case EDiceType::D6:   DiceStr = TEXT("d6");   break;
+            case EDiceType::D8:   DiceStr = TEXT("d8");   break;
+            case EDiceType::D10:  DiceStr = TEXT("d10");  break;
+            case EDiceType::D12:  DiceStr = TEXT("d12");  break;
+            case EDiceType::D100: DiceStr = TEXT("d100"); break;
+            default:               DiceStr = TEXT("d20");  break;
+        }
+
+        DialogueText->SetText(FText::FromString(
+            FString::Printf(TEXT("🎲 %s = %d"), *DiceStr, CurrentDiceValue)));
+    }
+
+    // Check if animation is complete
+    if (DiceRollTimer >= DiceRollDuration)
+    {
+        bIsDiceRolling = false;
+        CurrentDiceValue = TargetDiceValue;
+
+        // Display final result
+        ShowAttributeCheckResult(PendingDiceResult);
+    }
 }
